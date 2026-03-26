@@ -1,5 +1,8 @@
 //! Rust Web Service Template
-//! High-performance with 3 benchmark endpoints + gRPC
+//! High-performance with 3 benchmark endpoints + gRPC + PostgreSQL
+
+mod database;
+mod routes;
 
 use axum::{
     extract::{Query, State},
@@ -22,6 +25,7 @@ use tokio::sync::OnceCell;
 struct AppState {
     service_name: String,
     version: String,
+    db_pool: Option<database::DbPool>,
 }
 
 // REST client for inter-service communication
@@ -406,9 +410,27 @@ async fn main() {
     let state = Arc::new(AppState {
         service_name: "rust-template".to_string(),
         version: "0.1.0".to_string(),
+        db_pool: None,
     });
 
-    let app = Router::new()
+    // Try to initialize database connection
+    let db_pool = if let Ok(database_url) = std::env::var("DATABASE_URL") {
+        match database::init_db(&database_url).await {
+            Ok(pool) => {
+                println!("PostgreSQL connected successfully");
+                Some(pool)
+            }
+            Err(e) => {
+                eprintln!("Failed to connect to PostgreSQL: {}", e);
+                None
+            }
+        }
+    } else {
+        println!("DATABASE_URL not set, skipping database connection");
+        None
+    };
+
+    let mut app = Router::new()
         .route("/", get(index_handler))
         .route("/health", get(health_handler))
         .route("/api/hello", get(hello_handler))
@@ -420,8 +442,14 @@ async fn main() {
         // gRPC HTTP endpoints (proto over HTTP/1.1)
         .route("/grpc.hello", post(grpc_hello_handler))
         .route("/grpc.health", get(grpc_health_handler))
-        .route("/grpc.aggregate", post(grpc_aggregate_handler))
-        .with_state(state);
+        .route("/grpc.aggregate", post(grpc_aggregate_handler));
+
+    // Add database routes if pool is available
+    if let Some(pool) = db_pool {
+        app = app.merge(routes::database::create_db_router(pool));
+    }
+
+    let app = app.with_state(state);
 
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "3001".to_string())
@@ -432,6 +460,7 @@ async fn main() {
     println!("REST endpoints: /health, /api/hello, /api/compute, /api/echo");
     println!("Internal: /internal/aggregate, /internal/chain");
     println!("gRPC (HTTP): /grpc.hello, /grpc.health, /grpc.aggregate");
+    println!("Database: /db/records (CRUD operations)");
     println!("gRPC (real): port 5001 (requires tonic-proto)");
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))

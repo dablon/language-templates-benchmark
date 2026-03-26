@@ -1,13 +1,13 @@
 FROM alpine:3.19 AS builder
 
-RUN apk add --no-cache gcc musl-dev libmicrohttpd-dev make curl-dev
+RUN apk add --no-cache gcc musl-dev libmicrohttpd-dev make curl-dev json-c-dev
 
 WORKDIR /app
 COPY . .
 RUN make clean && make
 
 FROM alpine:3.19
-RUN apk add --no-cache ca-certificates libmicrohttpd curl libcurl
+RUN apk add --no-cache ca-certificates libmicrohttpd curl libcurl json-c
 WORKDIR /app
 COPY --from=builder /app/c-template .
 EXPOSE 3004

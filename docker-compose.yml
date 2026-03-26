@@ -2,6 +2,29 @@ version: '3.8'
 
 services:
   # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=benchmark
+      - POSTGRES_PASSWORD=benchmark123
+      - POSTGRES_DB=benchmark_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U benchmark -d benchmark_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - benchmark-net
+
+  # ============================================
   # Service Mesh - Consul (Service Discovery)
   # ============================================
   consul:
@@ -31,6 +54,7 @@ services:
       - PYTHON_URL=http://python-template:3003
       - C_URL=http://c-template:3004
     depends_on:
+      - postgres
       - rust-template
       - go-template
       - python-template
@@ -56,6 +80,10 @@ services:
       - PYTHON_SERVICE_URL=http://python-template:3003
       - C_SERVICE_URL=http://c-template:3004
       - PORT=3001
+      - DATABASE_URL=postgresql://benchmark:benchmark123@postgres:5432/benchmark_db
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 10s
@@ -77,6 +105,10 @@ services:
       - PYTHON_SERVICE_URL=http://python-template:3003
       - C_SERVICE_URL=http://c-template:3004
       - PORT=3002
+      - DATABASE_URL=postgresql://benchmark:benchmark123@postgres:5432/benchmark_db
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
       interval: 10s
@@ -98,6 +130,10 @@ services:
       - GO_SERVICE_URL=http://go-template:3002
       - C_SERVICE_URL=http://c-template:3004
       - PORT=3003
+      - DATABASE_URL=postgresql://benchmark:benchmark123@postgres:5432/benchmark_db
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
       interval: 10s
@@ -118,6 +154,10 @@ services:
       - RUST_SERVICE_URL=http://rust-template:3001
       - GO_SERVICE_URL=http://go-template:3002
       - PYTHON_SERVICE_URL=http://python-template:3003
+      - DATABASE_URL=postgresql://benchmark:benchmark123@postgres:5432/benchmark_db
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
       interval: 10s
@@ -132,3 +172,9 @@ services:
 networks:
   benchmark-net:
     driver: bridge
+
+# ============================================
+# Volume Configuration
+# ============================================
+volumes:
+  postgres_data:

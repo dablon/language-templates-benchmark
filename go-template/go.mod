@@ -2,7 +2,10 @@ module github.com/dablon/language-templates-benchmark/go-template
 
 go 1.21
 
-require github.com/gin-gonic/gin v1.9.1
+require (
+	github.com/gin-gonic/gin v1.9.1
+	github.com/lib/pq v1.12.0
+)
 
 require (
 	github.com/bytedance/sonic v1.9.1 // indirect

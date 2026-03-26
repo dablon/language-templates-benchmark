@@ -4,74 +4,827 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Rust Web Service Template - High Performance Benchmark">
-    <title>Rust Web Service Template</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <title>Rust Web Service - Language Templates Benchmark</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-rust: #dea584;
+            --accent-go: #00add8;
+            --accent-python: #4caf50;
+            --accent-c: #ff6b6b;
+            --border-color: #30363d;
+            --success: #238636;
+            --warning: #d29922;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(222, 165, 132, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(0, 173, 216, 0.08) 0%, transparent 50%);
+            animation: bgMove 20s ease-in-out infinite;
+        }
+
+        @keyframes bgMove {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-10%, -10%); }
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            font-size: 48px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo h1 {
+            font-size: 2em;
+            background: linear-gradient(90deg, var(--accent-rust), #b7410e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        .nav a:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 60px 0;
+        }
+
+        .hero h2 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .hero .framework {
+            font-size: 1.5em;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-rust);
+        }
+
+        .stat-card.winner {
+            border-color: var(--success);
+            background: linear-gradient(135deg, var(--bg-secondary), rgba(35, 134, 54, 0.1));
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--accent-rust);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .stat-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-top: 10px;
+        }
+
+        .badge-tps { background: var(--success); color: white; }
+        .badge-latency { background: var(--warning); color: black; }
+        .badge-memory { background: #9c27b0; color: white; }
+
+        /* Sections */
+        section {
+            margin: 40px 0;
+        }
+
+        section h3 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-table th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+
+        .comparison-table tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .comparison-table .winner-row {
+            background: rgba(35, 134, 54, 0.15);
+        }
+
+        .comparison-table .winner-row td:first-child::before {
+            content: '🏆 ';
+        }
+
+        /* Endpoints Grid */
+        .endpoints-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .endpoint-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .endpoint-card:hover {
+            border-color: var(--accent-rust);
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .method {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .method.get { background: var(--success); }
+        .method.post { background: var(--accent-go); }
+        .method.put { background: var(--warning); color: black; }
+        .method.delete { background: #f85149; }
+
+        .endpoint-path {
+            font-family: monospace;
+            font-size: 1.1em;
+            color: var(--accent-rust);
+        }
+
+        .endpoint-desc {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        /* Inter-Service Section */
+        .inter-service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .inter-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .inter-card h4 {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .inter-value {
+            font-size: 1.8em;
+            color: var(--accent-rust);
+        }
+
+        /* Charts */
+        .chart-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bar-label {
+            width: 80px;
+            font-size: 0.9em;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 30px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .bar-fill.rust { background: var(--accent-rust); }
+        .bar-fill.go { background: var(--accent-go); }
+        .bar-fill.python { background: var(--accent-python); }
+        .bar-fill.c { background: var(--accent-c); }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-rust);
+        }
+
+        .action-btn.primary {
+            background: var(--accent-rust);
+            color: var(--bg-primary);
+            border-color: var(--accent-rust);
+        }
+
+        .action-btn.primary:hover {
+            background: #b7410e;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            margin-top: 60px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--accent-rust);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h2 { font-size: 2em; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav { display: none; }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--accent-rust);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results Display */
+        .result-box {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .result-box.show { display: block; }
+
+        .result-box pre {
+            overflow-x: auto;
+            color: var(--accent-rust);
+        }
+    </style>
 </head>
 <body>
+    <div class="bg-animation"></div>
+
     <div class="container">
-        <header class="header">
+        <header>
             <div class="logo">
-                <span class="logo-icon">⚡</span>
-                <h1>Rust Web Service</h1>
+                <span class="logo-icon">🦀</span>
+                <div>
+                    <h1>Rust Service</h1>
+                    <span style="color: var(--text-secondary);">Language Templates Benchmark</span>
+                </div>
             </div>
-            <div class="badge">v0.1.0</div>
+            <nav class="nav">
+                <a href="/">Home</a>
+                <a href="/health">Health</a>
+                <a href="/api/hello">API</a>
+                <a href="http://localhost:3100">Gateway</a>
+                <a href="http://localhost:8500">Consul</a>
+            </nav>
         </header>
 
-        <main class="main">
-            <section class="hero card">
-                <h2>Language: <span class="highlight">Rust</span></h2>
-                <p>Framework: <code>Axum</code></p>
-                <p>Port: <code>3001</code></p>
-                <p class="performance">
-                    <span class="perf-label">Performance:</span>
-                    <span class="perf-value">★★★★★</span>
-                </p>
+        <main>
+            <!-- Hero Section -->
+            <section class="hero">
+                <h2>High-Performance Rust Service</h2>
+                <p class="framework">Powered by <strong>Axum</strong> framework • <strong>Tokio</strong> async runtime</p>
+
+                <div class="quick-actions">
+                    <button class="action-btn primary" onclick="testEndpoint('/health')">
+                        🟢 Test Health
+                    </button>
+                    <button class="action-btn" onclick="testEndpoint('/api/hello')">
+                        📡 Test API
+                    </button>
+                    <button class="action-btn" onclick="testEndpoint('/internal/aggregate')">
+                        🔗 Test Aggregate
+                    </button>
+                    <button class="action-btn" onclick="testEndpoint('/grpc.health')">
+                        ⚡ Test gRPC
+                    </button>
+                </div>
+
+                <div id="result" class="result-box">
+                    <pre></pre>
+                </div>
             </section>
 
-            <section class="endpoints card">
-                <h2>API Endpoints</h2>
-                <ul class="endpoint-list">
-                    <li>
-                        <a href="/health" class="endpoint endpoint-get">
-                            <span class="method">GET</span>
-                            <span class="path">/health</span>
-                            <span class="desc">Health check</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/api/hello" class="endpoint endpoint-get">
-                            <span class="method">GET</span>
-                            <span class="path">/api/hello</span>
-                            <span class="desc">JSON response</span>
-                        </a>
-                    </li>
-                    <li>
-                        <div class="endpoint endpoint-post">
-                            <span class="method">POST</span>
-                            <span class="path">/api/echo</span>
-                            <span class="desc">Echo body</span>
+            <!-- Benchmark Stats -->
+            <section>
+                <h3>📊 Benchmark Results</h3>
+                <div class="stats-grid">
+                    <div class="stat-card winner">
+                        <div class="stat-value">600</div>
+                        <div class="stat-label">TPS (100 concurrent)</div>
+                        <span class="stat-badge badge-tps">🏆 Best</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">102ms</div>
+                        <div class="stat-label">Avg Latency</div>
+                        <span class="stat-badge badge-latency">⚡ Fast</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">266ms</div>
+                        <div class="stat-label">P99 Latency</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">8MB</div>
+                        <div class="stat-label">Memory Usage</div>
+                        <span class="stat-badge badge-memory">💾 Low</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Chart -->
+            <section>
+                <h3>📈 TPS Comparison (100 concurrent)</h3>
+                <div class="chart-container">
+                    <div class="bar-chart">
+                        <div class="bar-row">
+                            <div class="bar-label">🦀 Rust</div>
+                            <div class="bar-track">
+                                <div class="bar-fill rust" style="width: 100%;">600 TPS</div>
+                            </div>
                         </div>
-                    </li>
-                </ul>
+                        <div class="bar-row">
+                            <div class="bar-label">🐹 Go</div>
+                            <div class="bar-track">
+                                <div class="bar-fill go" style="width: 94%;">567 TPS</div>
+                            </div>
+                        </div>
+                        <div class="bar-row">
+                            <div class="bar-label">⚙️ C</div>
+                            <div class="bar-track">
+                                <div class="bar-fill c" style="width: 94%;">567 TPS</div>
+                            </div>
+                        </div>
+                        <div class="bar-row">
+                            <div class="bar-label">🐍 Python</div>
+                            <div class="bar-track">
+                                <div class="bar-fill python" style="width: 83%;">500 TPS</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
-            <section class="info card">
-                <h2>About</h2>
-                <p>This is a high-performance web service template built with Rust and Axum framework, designed for benchmarking against other language implementations.</p>
-                <div class="tech-stack">
-                    <span class="tech-badge">Rust</span>
-                    <span class="tech-badge">Axum</span>
-                    <span class="tech-badge">Tokio</span>
-                    <span class="tech-badge">Tower</span>
+            <!-- Comparison Table -->
+            <section>
+                <h3>🔬 Language Comparison</h3>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Language</th>
+                            <th>Framework</th>
+                            <th>TPS</th>
+                            <th>Avg Latency</th>
+                            <th>P99</th>
+                            <th>Memory</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="winner-row">
+                            <td>🦀 Rust</td>
+                            <td>Axum</td>
+                            <td>600</td>
+                            <td>102ms</td>
+                            <td>266ms</td>
+                            <td>8MB</td>
+                        </tr>
+                        <tr>
+                            <td>🐹 Go</td>
+                            <td>Gin</td>
+                            <td>567</td>
+                            <td>110ms</td>
+                            <td>241ms</td>
+                            <td>11MB</td>
+                        </tr>
+                        <tr>
+                            <td>🐍 Python</td>
+                            <td>FastAPI</td>
+                            <td>500</td>
+                            <td>137ms</td>
+                            <td>347ms</td>
+                            <td>38MB</td>
+                        </tr>
+                        <tr>
+                            <td>⚙️ C</td>
+                            <td>libmicrohttpd</td>
+                            <td>567</td>
+                            <td>117ms</td>
+                            <td>255ms</td>
+                            <td>1.5MB</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Available Endpoints -->
+            <section>
+                <h3>🔌 Available Endpoints</h3>
+                <div class="endpoints-grid">
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/</span>
+                        </div>
+                        <p class="endpoint-desc">Service homepage</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/health</span>
+                        </div>
+                        <p class="endpoint-desc">Health check endpoint</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/api/hello</span>
+                        </div>
+                        <p class="endpoint-desc">JSON greeting response</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/api/compute</span>
+                        </div>
+                        <p class="endpoint-desc">CPU benchmark endpoint</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="endpoint-path">/api/echo</span>
+                        </div>
+                        <p class="endpoint-desc">Echo request body</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/internal/aggregate</span>
+                        </div>
+                        <p class="endpoint-desc">Call other services</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="endpoint-path">/grpc.hello</span>
+                        </div>
+                        <p class="endpoint-desc">gRPC-style hello</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/grpc.health</span>
+                        </div>
+                        <p class="endpoint-desc">gRPC-style health</p>
+                    </div>
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="endpoint-path">/grpc.aggregate</span>
+                        </div>
+                        <p class="endpoint-desc">gRPC aggregate</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Inter-Service -->
+            <section>
+                <h3>🌐 Inter-Service Communication</h3>
+                <div class="inter-service-grid">
+                    <div class="inter-card">
+                        <h4>Rust → Aggregate</h4>
+                        <div class="inter-value">58ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Time to call Go, Python, C</p>
+                    </div>
+                    <div class="inter-card">
+                        <h4>Gateway REST</h4>
+                        <div class="inter-value">30ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Aggregate all services</p>
+                    </div>
+                    <div class="inter-card">
+                        <h4>Gateway gRPC</h4>
+                        <div class="inter-value">38ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">gRPC-style aggregate</p>
+                    </div>
+                    <div class="inter-card">
+                        <h4>Service Mesh</h4>
+                        <div class="inter-value">19ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Consul health check</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Database CRUD -->
+            <section>
+                <h3>Database CRUD Operations</h3>
+                <div class="inter-service-grid">
+                    <div class="inter-card">
+                        <h4>CREATE</h4>
+                        <div class="inter-value">~20ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Insert new record</p>
+                    </div>
+                    <div class="inter-card">
+                        <h4>READ</h4>
+                        <div class="inter-value">~4ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Query records</p>
+                    </div>
+                    <div class="inter-card">
+                        <h4>UPDATE</h4>
+                        <div class="inter-value">~15ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Modify record</p>
+                    </div>
+                    <div class="inter-card">
+                        <h4>DELETE</h4>
+                        <div class="inter-value">~12ms</div>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Remove record</p>
+                    </div>
+                </div>
+                <div class="quick-actions" style="margin-top: 20px;">
+                    <button class="action-btn" onclick="testCrud('GET', '/db/records')">Get All Records</button>
+                    <button class="action-btn" onclick="testCrud('POST', '/db/records', {name: 'Test', value: 42})">Create Record</button>
+                    <button class="action-btn" onclick="testCrud('PUT', '/db/records/1', {value: 100})">Update Record</button>
+                    <button class="action-btn" onclick="testCrud('DELETE', '/db/records/10')">Delete Record</button>
+                </div>
+                <div id="crud-result" class="result-box"><pre></pre></div>
+            </section>
+
+            <!-- Resources -->
+            <section>
+                <h3>💻 Resource Usage</h3>
+                <div class="chart-container">
+                    <div class="bar-chart">
+                        <div class="bar-row">
+                            <div class="bar-label">⚙️ C</div>
+                            <div class="bar-track">
+                                <div class="bar-fill c" style="width: 4%;">1.5MB</div>
+                            </div>
+                        </div>
+                        <div class="bar-row">
+                            <div class="bar-label">🦀 Rust</div>
+                            <div class="bar-track">
+                                <div class="bar-fill rust" style="width: 21%;">8MB</div>
+                            </div>
+                        </div>
+                        <div class="bar-row">
+                            <div class="bar-label">🐹 Go</div>
+                            <div class="bar-track">
+                                <div class="bar-fill go" style="width: 29%;">11MB</div>
+                            </div>
+                        </div>
+                        <div class="bar-row">
+                            <div class="bar-label">🐍 Python</div>
+                            <div class="bar-track">
+                                <div class="bar-fill python" style="width: 100%;">38MB</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
 
-        <footer class="footer">
-            <p>Part of <a href="https://github.com/dablon/language-templates-benchmark">Language Templates Benchmark</a></p>
+        <footer>
+            <p>Language Templates Benchmark Project</p>
+            <p style="margin-top: 10px;">
+                <a href="/health">Health</a> •
+                <a href="/api/hello">API</a> •
+                <a href="http://localhost:3100">Gateway</a> •
+                <a href="http://localhost:8500">Consul UI</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 0.8em; color: var(--text-secondary);">
+                Built with Rust + Axum • Benchmark Results: March 2026
+            </p>
         </footer>
     </div>
 
-    <script src="/static/js/app.js"></script>
+    <script>
+        async function testEndpoint(path) {
+            const resultBox = document.getElementById('result');
+            const pre = resultBox.querySelector('pre');
+
+            resultBox.classList.add('show');
+            pre.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(path, {
+                    method: path.includes('echo') || path.includes('grpc') ? 'POST' : 'GET',
+                    headers: path.includes('grpc') ? { 'Content-Type': 'application/json' } : {},
+                    body: path.includes('grpc') ? JSON.stringify({ name: 'test' }) : null
+                });
+
+                const data = await response.json();
+                pre.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                pre.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testCrud(method, path, body = null) {
+            const resultBox = document.getElementById('crud-result');
+            const pre = resultBox.querySelector('pre');
+            resultBox.classList.add('show');
+            pre.textContent = 'Loading...';
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                const response = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+                const data = await response.json();
+                pre.textContent = JSON.stringify(data, null, 2);
+            } catch (error) { pre.textContent = 'Error: ' + error.message; }
+        }
+
+        // Auto-animate bars on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.querySelectorAll('.bar-fill').forEach(bar => {
+                    const width = bar.style.width;
+                    bar.style.width = '0%';
+                    setTimeout(() => {
+                        bar.style.width = width;
+                    }, 100);
+                });
+            }, 500);
+        });
+    </script>
 </body>
 </html>

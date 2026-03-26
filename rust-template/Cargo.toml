@@ -33,6 +33,9 @@ chrono = { version = "0.4", features = ["serde"] }
 # REST client for inter-service calls
 reqwest = { version = "0.12", features = ["json"] }
 
+# PostgreSQL
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono"] }
+
 # gRPC
 tonic = "0.10"
 prost = "0.12"
