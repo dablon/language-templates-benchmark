@@ -33,6 +33,10 @@ C_OK = '[OK] '
 C_INFO = '[INFO] '
 C_HEADER = '==== '
 C_END = ''
+GREEN = ''
+BLUE = ''
+YELLOW = ''
+NC = ''
 
 class BenchmarkResults:
     def __init__(self):
@@ -41,7 +45,8 @@ class BenchmarkResults:
             "http": {},
             "grpc": {},
             "inter_service": {},
-            "resource_usage": {}
+            "resource_usage": {},
+            "database": {}
         }
 
     def add_http_result(self, service: str, concurrency: int, tps: float, latency_avg: float, latency_p99: float):
@@ -72,6 +77,14 @@ class BenchmarkResults:
         self.data["resource_usage"][service] = {
             "cpu": cpu,
             "memory": memory
+        }
+
+    def add_database_result(self, service: str, operation: str, avg_ms: float, p99_ms: float = 0):
+        if service not in self.data["database"]:
+            self.data["database"][service] = {}
+        self.data["database"][service][operation] = {
+            "avg_ms": round(avg_ms, 2),
+            "p99_ms": round(p99_ms, 2)
         }
 
     def save(self, filename: str):
@@ -297,6 +310,112 @@ async def run_inter_service_benchmarks(results: BenchmarkResults):
         print(f"  {service_name}: avg {avg_time:.2f}ms")
         results.add_inter_service_result(f"service_{service_name}_aggregate", service_name, avg_time)
 
+
+async def run_database_benchmarks(results: BenchmarkResults):
+    """Run database CRUD benchmarks for services that support it."""
+    print(f"\n{C_HEADER}{'='*60}{C_END}")
+    print(f"{C_INFO}  DATABASE CRUD BENCHMARKS{C_END}")
+    print(f"{C_HEADER}{'='*60}{C_END}\n")
+
+    # Services with database support
+    db_services = [
+        {"name": "go", "port": 3002},
+    ]
+
+    for svc in db_services:
+        service_name = svc["name"]
+        port = svc["port"]
+        base_url = f"http://localhost:{port}"
+
+        print(f"{C_INFO}Testing {service_name.upper()} database operations{C_END}")
+
+        # CREATE benchmark
+        print("  CREATE...", end=" ", flush=True)
+        create_times = []
+        for _ in range(10):
+            start = time.perf_counter()
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.post(
+                        f"{base_url}/db/records",
+                        json={"name": "Benchmark Record", "value": 100},
+                        timeout=10.0
+                    )
+                    elapsed = (time.perf_counter() - start) * 1000
+                    if resp.status_code == 201:
+                        create_times.append(elapsed)
+                except:
+                    pass
+
+        avg_create = statistics.mean(create_times) if create_times else 0
+        p99_create = sorted(create_times)[int(len(create_times) * 0.99)] if create_times else 0
+        results.add_database_result(service_name, "create", avg_create, p99_create)
+        print(f"avg: {avg_create:.2f}ms, p99: {p99_create:.2f}ms")
+
+        # READ benchmark
+        print("  READ...", end=" ", flush=True)
+        read_times = []
+        for _ in range(20):
+            start = time.perf_counter()
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.get(f"{base_url}/db/records", timeout=10.0)
+                    elapsed = (time.perf_counter() - start) * 1000
+                    if resp.status_code == 200:
+                        read_times.append(elapsed)
+                except:
+                    pass
+
+        avg_read = statistics.mean(read_times) if read_times else 0
+        p99_read = sorted(read_times)[int(len(read_times) * 0.99)] if read_times else 0
+        results.add_database_result(service_name, "read", avg_read, p99_read)
+        print(f"avg: {avg_read:.2f}ms, p99: {p99_read:.2f}ms")
+
+        # UPDATE benchmark
+        print("  UPDATE...", end=" ", flush=True)
+        update_times = []
+        for _ in range(10):
+            start = time.perf_counter()
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.put(
+                        f"{base_url}/db/records/1",
+                        json={"value": 999},
+                        timeout=10.0
+                    )
+                    elapsed = (time.perf_counter() - start) * 1000
+                    if resp.status_code == 200:
+                        update_times.append(elapsed)
+                except:
+                    pass
+
+        avg_update = statistics.mean(update_times) if update_times else 0
+        p99_update = sorted(update_times)[int(len(update_times) * 0.99)] if update_times else 0
+        results.add_database_result(service_name, "update", avg_update, p99_update)
+        print(f"avg: {avg_update:.2f}ms, p99: {p99_update:.2f}ms")
+
+        # DELETE benchmark
+        print("  DELETE...", end=" ", flush=True)
+        delete_times = []
+        for _ in range(10):
+            start = time.perf_counter()
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.delete(f"{base_url}/db/records/5", timeout=10.0)
+                    elapsed = (time.perf_counter() - start) * 1000
+                    if resp.status_code == 200:
+                        delete_times.append(elapsed)
+                except:
+                    pass
+
+        avg_delete = statistics.mean(delete_times) if delete_times else 0
+        p99_delete = sorted(delete_times)[int(len(delete_times) * 0.99)] if delete_times else 0
+        results.add_database_result(service_name, "delete", avg_delete, p99_delete)
+        print(f"avg: {avg_delete:.2f}ms, p99: {p99_delete:.2f}ms")
+
+        print()
+
+
 def generate_markdown_report(results: BenchmarkResults, filepath: str):
     """Generate detailed markdown report."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -454,8 +573,21 @@ including HTTP performance, gRPC-style communication, and inter-service patterns
     if fastest:
         md += f"**{fastest.upper()}** with {fastest_latency:.2f}ms average latency\n"
 
-    md += """
+    # Database Results
+    if results.data["database"]:
+        md += """
 ---
+
+## Database CRUD Performance
+
+| Service | Operation | Avg (ms) | P99 (ms) |
+|---------|-----------|----------|----------|
+"""
+        for service, ops in results.data["database"].items():
+            for op, metrics in ops.items():
+                md += f"| {service} | {op} | {metrics['avg_ms']:.2f} | {metrics['p99_ms']:.2f} |\n"
+
+    md += """
 
 ## Conclusions
 
@@ -511,6 +643,7 @@ def main():
     asyncio.run(run_http_benchmarks(results))
     asyncio.run(run_grpc_benchmarks(results))
     asyncio.run(run_inter_service_benchmarks(results))
+    asyncio.run(run_database_benchmarks(results))
 
     # Save results
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

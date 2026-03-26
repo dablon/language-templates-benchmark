@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go get:*)",
+      "Bash(go mod:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(curl -s http://localhost:3002/db/records)",
+      "Bash(docker exec:*)",
+      "Bash(python -m json.tool)",
+      "Bash(docker-compose down:*)",
+      "Bash(curl -s -X POST http://localhost:3002/db/records -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Test Record\"\",\"\"value\"\":999}')",
+      "Bash(curl -s -X PUT http://localhost:3002/db/records/6 -H \"Content-Type: application/json\" -d '{\"\"value\"\":888}')",
+      "Bash(curl -s -X DELETE http://localhost:3002/db/records/6)",
+      "Bash(python benchmark/quick_benchmark.py)",
+      "Bash(python -c \":*)",
+      "Bash(curl -s http://localhost:3001/)",
+      "Bash(curl -s http://localhost:3100/)",
+      "Bash(cp -r \"c:/repos/nico/githubPriv/language-templates-benchmark/go-template/\"* \"c:/repos/nico/githubPriv/language-templates-benchmark/scaffold-cli/templates/go/\")",
+      "Bash(cp -r \"c:/repos/nico/githubPriv/language-templates-benchmark/python-template/\"* \"c:/repos/nico/githubPriv/language-templates-benchmark/scaffold-cli/templates/python/\")",
+      "Bash(cp -r \"c:/repos/nico/githubPriv/language-templates-benchmark/rust-template/\"* \"c:/repos/nico/githubPriv/language-templates-benchmark/scaffold-cli/templates/rust/\")",
+      "Bash(cp -r \"c:/repos/nico/githubPriv/language-templates-benchmark/c-template/\"* \"c:/repos/nico/githubPriv/language-templates-benchmark/scaffold-cli/templates/c/\")",
+      "Bash(\"./scaffold-cli/target/release/scaffold-cli.exe\" test-project:*)",
+      "Bash(\"./scaffold-cli/target/release/scaffold-cli.exe\" --help)",
+      "Bash(rm -rf test-project)",
+      "Bash(\"./scaffold-cli/target/release/scaffold-cli.exe\" -n test-project -l go -p http -d none)",
+      "Bash(\"./scaffold-cli/target/release/scaffold-cli.exe\" -n test-project -l rust -p service-mesh -d postgres-redis)",
+      "Bash(\"./scaffold-cli/target/release/scaffold-cli.exe\" -n test-project -l python -p grpc -d postgres)",
+      "Bash(\"./scaffold-cli/target/release/scaffold-cli.exe\" -n test-project -l c -p http -d none)"
+    ]
+  }
+}

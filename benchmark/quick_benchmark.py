@@ -349,7 +349,7 @@ def main():
     for _ in range(5):
         start = time.perf_counter()
         try:
-            req = urllib.request.Request(f"http://localhost:3002/db/records/100", method='DELETE')
+            req = urllib.request.Request(f"http://localhost:3002/db/records/5", method='DELETE')
             with urllib.request.urlopen(req, timeout=10) as resp:
                 _ = resp.read()
                 elapsed = (time.perf_counter() - start) * 1000

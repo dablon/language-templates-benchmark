@@ -283,7 +283,7 @@ HTML_CONTENT = r"""
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Serve the gateway homepage."""
-    return HTMLContent
+    return HTML_CONTENT
 
 
 @app.get("/health")
