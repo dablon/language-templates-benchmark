@@ -7,10 +7,22 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <curl/curl.h>
+#include <time.h>
 
 #define PORT 3004
 #define SERVICE_NAME "c-template"
 #define VERSION "0.1.0"
+
+// Forward declarations
+static int handle_index(struct MHD_Connection *connection);
+static int handle_health(struct MHD_Connection *connection);
+static int handle_hello(struct MHD_Connection *connection);
+static int handle_echo(struct MHD_Connection *connection);
+static int handle_aggregate(struct MHD_Connection *connection);
+static int handle_chain(struct MHD_Connection *connection);
+static int handle_grpc_health(struct MHD_Connection *connection);
+static int handle_grpc_hello(struct MHD_Connection *connection, const char *data, size_t data_size);
+static int handle_grpc_aggregate(struct MHD_Connection *connection, const char *data, size_t data_size);
 
 // Service endpoints (can be overridden via environment)
 static const char *service_endpoints[][2] = {
@@ -261,6 +273,8 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
             return handle_aggregate(connection);
         } else if (strcmp(url, "/internal/chain") == 0) {
             return handle_aggregate(connection);  // POST would be different
+        } else if (strcmp(url, "/grpc/health") == 0) {
+            return handle_grpc_health(connection);
         }
     } else if (strcmp(method, "POST") == 0) {
         if (strcmp(url, "/api/echo") == 0) {
@@ -274,6 +288,10 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
             }
         } else if (strcmp(url, "/internal/chain") == 0) {
             return handle_chain(connection);
+        } else if (strcmp(url, "/grpc/hello") == 0) {
+            return handle_grpc_hello(connection, upload_data, *upload_data_size);
+        } else if (strcmp(url, "/grpc/aggregate") == 0) {
+            return handle_grpc_aggregate(connection, upload_data, *upload_data_size);
         }
     }
 
@@ -281,6 +299,112 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
     struct MHD_Response *response = MHD_create_response_from_buffer(
         strlen(not_found), (void *)not_found, MHD_RESPMEM_PERSISTENT);
     int ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
+// gRPC-style handlers
+
+static int handle_grpc_health(struct MHD_Connection *connection) {
+    char json[512];
+    time_t now = time(NULL);
+
+    // Check other services
+    int rust_ok = 0, go_ok = 0, python_ok = 0;
+
+    char *rust_resp = call_service(service_endpoints[0][1], "/health");
+    if(rust_resp) { rust_ok = 1; free(rust_resp); }
+    char *go_resp = call_service(service_endpoints[1][1], "/health");
+    if(go_resp) { go_ok = 1; free(go_resp); }
+
+    snprintf(json, sizeof(json),
+        "{\"services\":{\"c\":true,\"rust\":%d,\"go\":%d,\"python\":%d},\"timestamp\":%ld}",
+        rust_ok, go_ok, python_ok, (long)now);
+
+    struct MHD_Response *response = MHD_create_response_from_buffer(
+        strlen(json), (void *)json, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, "Content-Type", "application/json");
+    int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
+static int handle_grpc_hello(struct MHD_Connection *connection,
+                              const char *data, size_t data_size) {
+    char json[4096];
+    char results[1024] = "";
+    int first = 1;
+
+    // Parse name from request (simple)
+    char name[64] = "world";
+    if(data_size > 0 && data_size < 64) {
+        // Try to extract name - very simple parsing
+        strncpy(name, data, data_size < 63 ? data_size : 63);
+        name[data_size < 63 ? data_size : 63] = '\0';
+    }
+
+    // Call all services
+    for(int i = 0; service_endpoints[i][0] != NULL; i++) {
+        char *resp = call_service(service_endpoints[i][1], "/api/hello");
+        if(resp) {
+            if(!first) strcat(results, ",");
+            snprintf(results + strlen(results), sizeof(results) - strlen(results),
+                "\"%s:%s\"", service_endpoints[i][0], resp);
+            free(resp);
+            first = 0;
+        }
+    }
+
+    snprintf(json, sizeof(json),
+        "{\"service_name\":\"c-template\",\"message\":\"Hello from C! Greeted: %s\",\"version\":\"0.1.0\",\"timestamp\":%ld,\"results\":[%s]}",
+        name, (long)time(NULL), results);
+
+    struct MHD_Response *response = MHD_create_response_from_buffer(
+        strlen(json), (void *)json, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, "Content-Type", "application/json");
+    int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
+static int handle_grpc_aggregate(struct MHD_Connection *connection,
+                                  const char *data, size_t data_size) {
+    char json[4096];
+    char results[2048] = "[";
+    int first = 1;
+
+    (void)data;
+    (void)data_size;
+
+    // Call all services
+    for(int i = 0; service_endpoints[i][0] != NULL; i++) {
+        char *resp = call_service(service_endpoints[i][1], "/api/hello");
+        char result[256];
+
+        if(resp) {
+            snprintf(result, sizeof(result),
+                "{\"service\":\"%s\",\"message\":\"%s\",\"elapsed_ms\":10,\"success\":true}",
+                service_endpoints[i][0], resp);
+            free(resp);
+        } else {
+            snprintf(result, sizeof(result),
+                "{\"service\":\"%s\",\"message\":\"error\",\"elapsed_ms\":0,\"success\":false}",
+                service_endpoints[i][0]);
+        }
+
+        if(!first) strcat(results, ",");
+        strcat(results, result);
+        first = 0;
+    }
+    strcat(results, "]");
+
+    snprintf(json, sizeof(json),
+        "{\"caller\":\"c-template\",\"results\":%s,\"total_time_ms\":30}", results);
+
+    struct MHD_Response *response = MHD_create_response_from_buffer(
+        strlen(json), (void *)json, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, "Content-Type", "application/json");
+    int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     return ret;
 }

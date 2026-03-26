@@ -4,9 +4,18 @@ package benchmark;
 
 option go_package = "github.com/nico/language-templates-benchmark/gen/go/benchmark";
 
+// ============================================
+// Aggregator Service (gRPC)
+// ============================================
+
+service Aggregator {
+    rpc Hello(HelloRequest) returns (HelloResponse);
+    rpc Health(HealthRequest) returns (HealthResponse);
+    rpc Aggregate(AggregateRequest) returns (AggregateResponse);
+}
+
 message HelloRequest {
     string name = 1;
-    int64 timestamp = 2;
 }
 
 message HelloResponse {
@@ -14,18 +23,19 @@ message HelloResponse {
     string message = 2;
     string version = 3;
     int64 timestamp = 4;
+    repeated string results = 5;
 }
 
 message HealthRequest {}
 
-message HealthCheck {
+message ServiceHealth {
     string service_name = 1;
     bool healthy = 2;
     string status = 3;
 }
 
 message HealthResponse {
-    repeated HealthCheck services = 1;
+    map<string, bool> services = 1;
     int64 timestamp = 2;
 }
 
@@ -33,17 +43,15 @@ message AggregateRequest {
     string name = 1;
 }
 
+message ServiceResult {
+    string service = 1;
+    string message = 2;
+    uint64 elapsed_ms = 3;
+    bool success = 4;
+}
+
 message AggregateResponse {
-    repeated HelloResponse results = 1;
-    int64 total_time_ms = 2;
-}
-
-message ChainRequest {
-    string payload = 1;
-    int32 hop_count = 2;
-}
-
-message ChainResponse {
-    repeated string results = 1;
-    int64 total_time_ms = 2;
+    string caller = 1;
+    repeated ServiceResult results = 2;
+    uint64 total_time_ms = 3;
 }

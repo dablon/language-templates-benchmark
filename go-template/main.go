@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -17,7 +19,9 @@ var (
 	startTime   = time.Now()
 )
 
+// ============================================
 // Service endpoints configuration
+// ============================================
 var serviceEndpoints = map[string]string{
 	"rust":   getEnv("RUST_SERVICE_URL", "http://localhost:3001"),
 	"python": getEnv("PYTHON_SERVICE_URL", "http://localhost:3003"),
@@ -31,12 +35,55 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// ============================================
+// gRPC Protocol Message Definitions
+// ============================================
+
+type GrpcHelloRequest struct {
+	Name string `json:"name"`
+}
+
+type GrpcHelloResponse struct {
+	ServiceName string   `json:"service_name"`
+	Message     string   `json:"message"`
+	Version     string   `json:"version"`
+	Timestamp   int64    `json:"timestamp"`
+	Results     []string `json:"results"`
+}
+
+type GrpcHealthRequest struct{}
+
+type GrpcHealthResponse struct {
+	Services map[string]bool `json:"services"`
+	Timestamp int64          `json:"timestamp"`
+}
+
+type GrpcAggregateRequest struct {
+	Name *string `json:"name"`
+}
+
+type ServiceResult struct {
+	Service    string `json:"service"`
+	Message    string `json:"message"`
+	ElapsedMs  uint64 `json:"elapsed_ms"`
+	Success    bool   `json:"success"`
+}
+
+type GrpcAggregateResponse struct {
+	Caller        string          `json:"caller"`
+	Results       []ServiceResult `json:"results"`
+	TotalTimeMs   uint64          `json:"total_time_ms"`
+}
+
 // HTTP client for inter-service calls
 var httpClient = &http.Client{
 	Timeout: 5 * time.Second,
 }
 
-// CallService makes a REST call to another service
+// ============================================
+// gRPC Service Implementation
+// ============================================
+
 func callService(serviceKey, path string) map[string]interface{} {
 	url, ok := serviceEndpoints[serviceKey]
 	if !ok {
@@ -91,6 +138,96 @@ func callAllServices(path string) []map[string]interface{} {
 
 	return results
 }
+
+// gRPC-style Hello handler
+func grpcHello(req GrpcHelloRequest) GrpcHelloResponse {
+	results := make([]string, 0)
+
+	for service, url := range serviceEndpoints {
+		start := time.Now()
+		resp, err := httpClient.Get(url + "/api/hello")
+		elapsed := time.Since(start).Milliseconds()
+
+		if err == nil && resp.StatusCode == http.StatusOK {
+			var data map[string]interface{}
+			if json.NewDecoder(resp.Body).Decode(&data) == nil {
+				if msg, ok := data["message"].(string); ok {
+					results = append(results, fmt.Sprintf("%s: %s (%dms)", service, msg, elapsed))
+				}
+			}
+		}
+	}
+
+	return GrpcHelloResponse{
+		ServiceName: serviceName,
+		Message:     fmt.Sprintf("Hello from Go! Greeted: %s", req.Name),
+		Version:     version,
+		Timestamp:  time.Now().Unix(),
+		Results:    results,
+	}
+}
+
+// gRPC-style Health handler
+func grpcHealth() GrpcHealthResponse {
+	services := make(map[string]bool)
+	services["go"] = true
+
+	for service, url := range serviceEndpoints {
+		resp, err := httpClient.Get(url + "/health")
+		services[service] = err == nil && resp != nil && resp.StatusCode == http.StatusOK
+	}
+
+	return GrpcHealthResponse{
+		Services:  services,
+		Timestamp: time.Now().Unix(),
+	}
+}
+
+// gRPC-style Aggregate handler
+func grpcAggregate(req GrpcAggregateRequest) GrpcAggregateResponse {
+	start := time.Now()
+	results := make([]ServiceResult, 0)
+
+	for service, url := range serviceEndpoints {
+		start := time.Now()
+		resp, err := httpClient.Get(url + "/api/hello")
+		elapsed := time.Since(start).Milliseconds()
+
+		if err == nil && resp.StatusCode == http.StatusOK {
+			var data map[string]interface{}
+			if json.NewDecoder(resp.Body).Decode(&data) == nil {
+				msg, _ := data["message"].(string)
+				results = append(results, ServiceResult{
+					Service:   service,
+					Message:   msg,
+					ElapsedMs: elapsed,
+					Success:   true,
+				})
+			}
+		} else {
+			errMsg := "error"
+			if err != nil {
+				errMsg = err.Error()
+			}
+			results = append(results, ServiceResult{
+				Service:   service,
+				Message:   errMsg,
+				ElapsedMs: 0,
+				Success:   false,
+			})
+		}
+	}
+
+	return GrpcAggregateResponse{
+		Caller:      serviceName,
+		Results:     results,
+		TotalTimeMs: uint64(time.Since(start).Milliseconds()),
+	}
+}
+
+// ============================================
+// Standard REST Handlers
+// ============================================
 
 func health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
@@ -154,6 +291,35 @@ func chain(c *gin.Context) {
 	})
 }
 
+// ============================================
+// gRPC-style HTTP Handlers
+// ============================================
+
+func grpcHelloHandler(c *gin.Context) {
+	var req GrpcHelloRequest
+	c.ShouldBindJSON(&req)
+
+	if req.Name == "" {
+		req.Name = "world"
+	}
+
+	response := grpcHello(req)
+	c.JSON(http.StatusOK, response)
+}
+
+func grpcHealthHandler(c *gin.Context) {
+	response := grpcHealth()
+	c.JSON(http.StatusOK, response)
+}
+
+func grpcAggregateHandler(c *gin.Context) {
+	var req GrpcAggregateRequest
+	c.ShouldBindJSON(&req)
+
+	response := grpcAggregate(req)
+	c.JSON(http.StatusOK, response)
+}
+
 func index(c *gin.Context) {
 	html := `<!DOCTYPE html>
 <html lang="en">
@@ -184,6 +350,9 @@ func index(c *gin.Context) {
             <li>POST /api/echo - Echo body</li>
             <li>GET /internal/aggregate - Call all services</li>
             <li>POST /internal/chain - Chain services</li>
+            <li>POST /grpc/hello - gRPC-style hello</li>
+            <li>GET /grpc/health - gRPC-style health</li>
+            <li>POST /grpc/aggregate - gRPC-style aggregate</li>
         </ul>
     </div>
 </body>
@@ -206,6 +375,14 @@ func main() {
 	r.GET("/internal/aggregate", aggregate)
 	r.POST("/internal/chain", chain)
 
+	// gRPC-style endpoints
+	r.POST("/grpc/hello", grpcHelloHandler)
+	r.GET("/grpc/health", grpcHealthHandler)
+	r.POST("/grpc/aggregate", grpcAggregateHandler)
+
+	// Register with Consul for service mesh (placeholder)
+	go registerWithConsul()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3002"
@@ -215,4 +392,12 @@ func main() {
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// Placeholder for Consul service mesh registration
+func registerWithConsul() {
+	// In production, this would register with Consul
+	// consul agent service register -name=go-template -port=3002 -http=3002
+	time.Sleep(2 * time.Second)
+	log.Println("Service mesh: ready for Consul registration (placeholder)")
 }

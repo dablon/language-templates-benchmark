@@ -162,6 +162,110 @@ async def chain(request: Request):
         "total_time_ms": total_time_ms,
     }
 
+
+# ============================================
+# gRPC-style Endpoints (JSON over HTTP)
+# ============================================
+
+@app.post("/grpc/hello")
+async def grpc_hello(request: Request):
+    """gRPC-style Hello endpoint."""
+    try:
+        body = await request.json()
+        name = body.get("name", "world")
+    except:
+        name = "world"
+
+    start_time = time.time()
+    results = []
+
+    for service_key, url in SERVICE_ENDPOINTS.items():
+        svc_start = time.time()
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{url}/api/hello")
+                elapsed = int((time.time() - svc_start) * 1000)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    msg = data.get("message", "")
+                    results.append(f"{service_key}: {msg} ({elapsed}ms)")
+        except Exception as e:
+            results.append(f"{service_key}: error - {e}")
+
+    total_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "service_name": SERVICE_NAME,
+        "message": f"Hello from Python! Greeted: {name}",
+        "version": VERSION,
+        "timestamp": int(time.time()),
+        "results": results,
+    }
+
+
+@app.get("/grpc/health")
+async def grpc_health():
+    """gRPC-style Health endpoint."""
+    start_time = time.time()
+    services = {"python": True}
+
+    for service_key, url in SERVICE_ENDPOINTS.items():
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{url}/health")
+                services[service_key] = resp.status_code == 200
+        except:
+            services[service_key] = False
+
+    return {
+        "services": services,
+        "timestamp": int(time.time()),
+    }
+
+
+@app.post("/grpc/aggregate")
+async def grpc_aggregate(request: Request):
+    """gRPC-style Aggregate endpoint."""
+    start_time = time.time()
+    results = []
+
+    for service_key, url in SERVICE_ENDPOINTS.items():
+        svc_start = time.time()
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{url}/api/hello")
+                elapsed = int((time.time() - svc_start) * 1000)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    results.append({
+                        "service": service_key,
+                        "message": data.get("message", ""),
+                        "elapsed_ms": elapsed,
+                        "success": True,
+                    })
+                else:
+                    results.append({
+                        "service": service_key,
+                        "message": f"HTTP {resp.status_code}",
+                        "elapsed_ms": elapsed,
+                        "success": False,
+                    })
+        except Exception as e:
+            results.append({
+                "service": service_key,
+                "message": str(e),
+                "elapsed_ms": 0,
+                "success": False,
+            })
+
+    total_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "caller": SERVICE_NAME,
+        "results": results,
+        "total_time_ms": total_time_ms,
+    }
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "3003"))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")

@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -pthread
-LDFLAGS = -lmicrohttpd -pthread
+LDFLAGS = -lmicrohttpd -lcurl -pthread
 
 TARGET = c-template
 SRC = main.c

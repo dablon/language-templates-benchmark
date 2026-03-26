@@ -2,6 +2,22 @@ version: '3.8'
 
 services:
   # ============================================
+  # Service Mesh - Consul (Service Discovery)
+  # ============================================
+  consul:
+    image: consul:1.15
+    ports:
+      - "8500:8500"
+    command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
+    networks:
+      - benchmark-net
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
   # REST Gateway - Aggregates all services
   # ============================================
   gateway:
@@ -39,6 +55,7 @@ services:
       - GO_SERVICE_URL=http://go-template:3002
       - PYTHON_SERVICE_URL=http://python-template:3003
       - C_SERVICE_URL=http://c-template:3004
+      - PORT=3001
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 10s
@@ -59,6 +76,7 @@ services:
       - RUST_SERVICE_URL=http://rust-template:3001
       - PYTHON_SERVICE_URL=http://python-template:3003
       - C_SERVICE_URL=http://c-template:3004
+      - PORT=3002
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
       interval: 10s
@@ -79,6 +97,7 @@ services:
       - RUST_SERVICE_URL=http://rust-template:3001
       - GO_SERVICE_URL=http://go-template:3002
       - C_SERVICE_URL=http://c-template:3004
+      - PORT=3003
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
       interval: 10s

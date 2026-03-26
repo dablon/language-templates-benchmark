@@ -209,6 +209,165 @@ async def health_all():
     }
 
 
+# ============================================
+# gRPC-style Endpoints (JSON over HTTP)
+# ============================================
+
+@app.post("/api/grpc/hello")
+async def grpc_hello(request: Request):
+    """gRPC-style Hello - calls all services."""
+    try:
+        body = await request.json()
+        name = body.get("name", "world")
+    except:
+        name = "world"
+
+    start_time = time.time()
+    results = []
+
+    async with httpx.AsyncClient() as client:
+        for key in SERVICES:
+            svc_start = time.time()
+            service = SERVICES[key]
+            url = service["rest_url"] + "/grpc/hello"
+
+            try:
+                response = await client.post(url, json={"name": name}, timeout=5.0)
+                elapsed_ms = int((time.time() - svc_start) * 1000)
+                if response.status_code == 200:
+                    data = response.json()
+                    msg = data.get("message", "")
+                    results.append(f"{key}: {msg} ({elapsed_ms}ms)")
+            except Exception as e:
+                results.append(f"{key}: error - {e}")
+
+    total_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "method": "grpc/hello",
+        "protocol": "grpc",
+        "name": name,
+        "results": results,
+        "total_time_ms": total_time_ms,
+    }
+
+
+@app.get("/api/grpc/health")
+async def grpc_health():
+    """gRPC-style Health - checks all services."""
+    start_time = time.time()
+
+    async with httpx.AsyncClient() as client:
+        tasks = []
+        for key in SERVICES:
+            service = SERVICES[key]
+            url = service["rest_url"] + "/grpc/health"
+            tasks.append(client.get(url, timeout=5.0))
+
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    services = {"gateway": True}
+    for i, key in enumerate(SERVICES):
+        if isinstance(responses[i], Exception):
+            services[key] = False
+        elif responses[i].status_code == 200:
+            data = responses[i].json()
+            services[key] = data.get("services", {}).get(key, False)
+        else:
+            services[key] = False
+
+    total_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "method": "grpc/health",
+        "protocol": "grpc",
+        "services": services,
+        "total_time_ms": total_time_ms,
+    }
+
+
+@app.post("/api/grpc/aggregate")
+async def grpc_aggregate(request: Request):
+    """gRPC-style Aggregate - calls all services in parallel."""
+    try:
+        body = await request.json()
+        name = body.get("name", "world")
+    except:
+        name = "world"
+
+    start_time = time.time()
+    results = []
+
+    async with httpx.AsyncClient() as client:
+        for key in SERVICES:
+            svc_start = time.time()
+            service = SERVICES[key]
+            url = service["rest_url"] + "/grpc/aggregate"
+
+            try:
+                response = await client.post(url, json={"name": name}, timeout=5.0)
+                elapsed_ms = int((time.time() - svc_start) * 1000)
+                if response.status_code == 200:
+                    data = response.json()
+                    for r in data.get("results", []):
+                        results.append({
+                            "service": r.get("service", key),
+                            "message": r.get("message", ""),
+                            "elapsed_ms": r.get("elapsed_ms", elapsed_ms),
+                            "success": r.get("success", False),
+                        })
+            except Exception as e:
+                results.append({
+                    "service": key,
+                    "message": str(e),
+                    "elapsed_ms": 0,
+                    "success": False,
+                })
+
+    total_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "method": "grpc/aggregate",
+        "protocol": "grpc",
+        "caller": "gateway",
+        "results": results,
+        "total_time_ms": total_time_ms,
+    }
+
+
+# ============================================
+// Service Mesh Endpoints (Consul-style)
+// ============================================
+
+@app.get("/api/mesh/services")
+async def mesh_services():
+    """List all services in the mesh (simulated)."""
+    return {
+        "services": [
+            {"name": "gateway", "port": 3100, "status": "healthy"},
+            {"name": "rust-template", "port": 3001, "status": "healthy"},
+            {"name": "go-template", "port": 3002, "status": "healthy"},
+            {"name": "python-template", "port": 3003, "status": "healthy"},
+            {"name": "c-template", "port": 3004, "status": "healthy"},
+        ],
+        "consul": {"address": "consul:8500", "datacenter": "dc1"},
+    }
+
+
+@app.get("/api/mesh/health")
+async def mesh_health():
+    """Health check from service mesh perspective."""
+    return {
+        "checks": [
+            {"service": "gateway", "status": "passing"},
+            {"service": "rust-template", "status": "passing"},
+            {"service": "go-template", "status": "passing"},
+            {"service": "python-template", "status": "passing"},
+            {"service": "c-template", "status": "passing"},
+        ],
+    }
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "3100"))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

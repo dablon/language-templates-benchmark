@@ -251,6 +251,9 @@ async fn main() {
         version: "0.1.0".to_string(),
     });
 
+    // Create gRPC service state
+    let grpc_state = Arc::new(grpc::GrpcService::new());
+
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/health", get(health_handler))
@@ -260,6 +263,8 @@ async fn main() {
         // Inter-service communication endpoints
         .route("/internal/aggregate", get(aggregate_handler))
         .route("/internal/chain", post(chain_handler))
+        // gRPC-style endpoints (on port 5001 concept, but via HTTP)
+        .nest("/grpc", create_grpc_router())
         .with_state(state);
 
     let port = std::env::var("PORT")
