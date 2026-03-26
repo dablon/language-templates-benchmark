@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rust Web Service Template - High Performance Benchmark">
+    <title>Rust Web Service Template</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <h1>Rust Web Service</h1>
+            </div>
+            <div class="badge">v0.1.0</div>
+        </header>
+
+        <main class="main">
+            <section class="hero card">
+                <h2>Language: <span class="highlight">Rust</span></h2>
+                <p>Framework: <code>Axum</code></p>
+                <p>Port: <code>3001</code></p>
+                <p class="performance">
+                    <span class="perf-label">Performance:</span>
+                    <span class="perf-value">★★★★★</span>
+                </p>
+            </section>
+
+            <section class="endpoints card">
+                <h2>API Endpoints</h2>
+                <ul class="endpoint-list">
+                    <li>
+                        <a href="/health" class="endpoint endpoint-get">
+                            <span class="method">GET</span>
+                            <span class="path">/health</span>
+                            <span class="desc">Health check</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/api/hello" class="endpoint endpoint-get">
+                            <span class="method">GET</span>
+                            <span class="path">/api/hello</span>
+                            <span class="desc">JSON response</span>
+                        </a>
+                    </li>
+                    <li>
+                        <div class="endpoint endpoint-post">
+                            <span class="method">POST</span>
+                            <span class="path">/api/echo</span>
+                            <span class="desc">Echo body</span>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="info card">
+                <h2>About</h2>
+                <p>This is a high-performance web service template built with Rust and Axum framework, designed for benchmarking against other language implementations.</p>
+                <div class="tech-stack">
+                    <span class="tech-badge">Rust</span>
+                    <span class="tech-badge">Axum</span>
+                    <span class="tech-badge">Tokio</span>
+                    <span class="tech-badge">Tower</span>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Part of <a href="https://github.com/dablon/language-templates-benchmark">Language Templates Benchmark</a></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

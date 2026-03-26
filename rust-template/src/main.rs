@@ -1,76 +1,65 @@
-use axum::{
-    body::Body,
-    extract::State,
-    http::{Method, StatusCode},
-    response::{Html, IntoResponse, Response},
-    routing::{get, post},
-    Router,
-};
+//! Rust Web Service Template
+//!
+//! A high-performance web service template using Axum framework.
+//! Designed for benchmarking across multiple programming languages.
+
+mod config;
+mod constants;
+mod error;
+mod models;
+mod routes;
+
+use axum::{Router, Server};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
-#[derive(Clone)]
-struct AppState {
-    name: String,
-    version: String,
+pub use config::Config;
+pub use error::AppError;
+
+/// Initialize the tracing subscriber for logging
+fn init_tracing() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .with_target(true)
+        .with_thread_ids(true)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting default subscriber failed");
 }
 
-async fn health() -> impl IntoResponse {
-    let health = serde_json::json!({
-        "status": "healthy",
-        "service": "rust-template"
-    });
-    (StatusCode::OK, axum::Json(health))
-}
-
-async fn hello(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let response = serde_json::json!({
-        "message": "Hello from Rust!",
-        "service": state.name,
-        "version": state.version
-    });
-    (StatusCode::OK, axum::Json(response))
-}
-
-async fn echo(body: String) -> impl IntoResponse {
-    (StatusCode::OK, body)
-}
-
-async fn index() -> Html<&'static str> {
-    Html(std::include_str!("../index.html"))
-}
-
-fn create_app() -> Router {
-    let state = Arc::new(AppState {
-        name: "rust-template".to_string(),
-        version: "0.1.0".to_string(),
-    });
-
+/// Create and configure the Axum application
+fn create_app(config: &Config) -> Router {
     Router::new()
-        .route("/", get(index))
-        .route("/health", get(health))
-        .route("/api/hello", get(hello))
-        .route("/api/echo", post(echo))
-        .with_state(state)
+        .nest("/", routes::web::routes())
+        .nest("/api", routes::api::routes())
+        .route("/health", axum::routing::get(routes::health::handler))
+        .with_state(config.clone())
         .layer(TraceLayer::new_for_http())
 }
 
 #[tokio::main]
 async fn main() {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    init_tracing();
 
-    let app = create_app();
+    let config = Config::from_env();
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
-    info!("Rust template listening on {}", addr);
+    info!(
+        "Starting {} v{} on port {}",
+        constants::SERVICE_NAME,
+        constants::VERSION,
+        config.port
+    );
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
+    let app = create_app(&config);
+
+    info!("Server listening on {}", addr);
+
+    Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .expect("server failed");
 }
