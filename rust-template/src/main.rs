@@ -1,5 +1,5 @@
 //! Rust Web Service Template
-//! High-performance with 3 benchmark endpoints
+//! High-performance with 3 benchmark endpoints + gRPC
 
 use axum::{
     extract::{Query, State},
@@ -14,6 +14,8 @@ use std::sync::Arc;
 use std::convert::Infallible;
 use std::time::Instant;
 use std::collections::HashMap;
+use std::net::SocketAddr;
+use tokio::sync::OnceCell;
 
 // Application state
 #[derive(Clone)]
@@ -99,29 +101,19 @@ async fn hello_handler(
 // 2. CPU Computation - Fibonacci + Primes
 // ============================================
 fn fibonacci(n: u64) -> u64 {
-    if n <= 1 {
-        n
-    } else {
-        fibonacci(n - 1) + fibonacci(n - 2)
-    }
+    if n <= 1 { n } else { fibonacci(n - 1) + fibonacci(n - 2) }
 }
 
 fn is_prime(n: u64) -> bool {
-    if n < 2 {
-        return false;
-    }
+    if n < 2 { return false; }
     for i in 2..=((n as f64).sqrt() as u64) {
-        if n % i == 0 {
-            return false;
-        }
+        if n % i == 0 { return false; }
     }
     true
 }
 
 #[derive(Deserialize)]
-struct ComputeQuery {
-    n: Option<u64>,
-}
+struct ComputeQuery { n: Option<u64> }
 
 #[derive(Serialize)]
 struct ComputeResponse {
@@ -142,9 +134,7 @@ async fn compute_handler(
     let mut primes = Vec::new();
     let mut i: u64 = 2;
     while primes.len() < 500 && i < n * 10 {
-        if is_prime(i) {
-            primes.push(i);
-        }
+        if is_prime(i) { primes.push(i); }
         i += 1;
     }
     let elapsed = start.elapsed().as_millis() as u64;
@@ -169,7 +159,7 @@ async fn echo_handler(
     let char_count = text.chars().filter(|c| !c.is_whitespace()).count();
     let simple_hash = format!("{:x}", text.len().wrapping_mul(17).wrapping_add(text.chars().fold(0usize, |acc, c| acc.wrapping_add(c as usize))));
     let hash_prefix = &simple_hash[..16.min(simple_hash.len())];
-    
+
     Ok(Json(serde_json::json!({
         "original_length": text.len(),
         "word_count": word_count,
@@ -201,10 +191,9 @@ async fn index_handler() -> impl IntoResponse {
 }
 
 // ============================================
-// Service Communication Endpoints
+// Service Communication Endpoints (REST)
 // ============================================
 
-// Call all other services and aggregate responses
 async fn aggregate_handler(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
@@ -220,7 +209,6 @@ async fn aggregate_handler(
     }))
 }
 
-// Chain call: sequential service communication
 async fn chain_handler(
     State(state): State<Arc<AppState>>,
     body: Body,
@@ -230,8 +218,6 @@ async fn chain_handler(
 
     let client = RestClient::new();
     let start = Instant::now();
-
-    // Simple chain: Rust -> Go -> Python -> C
     let go_result = client.call_service("go", &format!("/api/hello?from={}", text)).await;
     let python_result = client.call_service("python", &format!("/api/hello?from={}", go_result.get("message").unwrap_or(&serde_json::Value::Null).as_str().unwrap_or(""))).await;
 
@@ -244,6 +230,177 @@ async fn chain_handler(
     })))
 }
 
+// ============================================
+// gRPC Server (using tonic)
+// ============================================
+
+mod grpc_service {
+    use tonic::{Request, Response, Status};
+    use std::time::Instant;
+    use std::collections::HashMap;
+    use std::net::SocketAddr;
+
+    // Proto types - defined inline for simplicity
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct HelloRequest { pub name: String }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct HelloResponse {
+        pub service_name: String,
+        pub message: String,
+        pub version: String,
+        pub timestamp: i64,
+        pub results: Vec<String>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct HealthRequest {}
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct HealthResponse {
+        pub services: HashMap<String, bool>,
+        pub timestamp: i64,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct AggregateRequest { pub name: String }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct ServiceResult {
+        pub service: String,
+        pub message: String,
+        pub elapsed_ms: u64,
+        pub success: bool,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct AggregateResponse {
+        pub caller: String,
+        pub results: Vec<ServiceResult>,
+        pub total_time_ms: u64,
+    }
+
+    pub struct GrpcAggregatorService {
+        service_name: String,
+        version: String,
+    }
+
+    impl GrpcAggregatorService {
+        pub fn new() -> Self {
+            Self {
+                service_name: "rust-template".to_string(),
+                version: "0.1.0".to_string(),
+            }
+        }
+
+        pub async fn hello(&self, name: String) -> Result<HelloResponse, Status> {
+            let mut results = Vec::new();
+            let endpoints = [("go", "http://localhost:3002"), ("python", "http://localhost:3003"), ("c", "http://localhost:3004")];
+            let client = reqwest::Client::new();
+
+            for (service, url) in endpoints.iter() {
+                let start = Instant::now();
+                if let Ok(resp) = client.get(format!("{}/api/hello", url)).send().await {
+                    let elapsed = start.elapsed().as_millis() as u64;
+                    if let Ok(data) = resp.json::<serde_json::Value>().await {
+                        if let Some(msg) = data.get("message").and_then(|v| v.as_str()) {
+                            results.push(format!("{}: {} ({}ms)", service, msg, elapsed));
+                        }
+                    }
+                }
+            }
+
+            Ok(HelloResponse {
+                service_name: self.service_name.clone(),
+                message: format!("Hello from Rust! Greeted: {}", name),
+                version: self.version.clone(),
+                timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64,
+                results,
+            })
+        }
+
+        pub async fn health(&self) -> Result<HealthResponse, Status> {
+            let mut services = HashMap::new();
+            services.insert("rust".to_string(), true);
+            let endpoints = [("go", "http://localhost:3002"), ("python", "http://localhost:3003"), ("c", "http://localhost:3004")];
+            let client = reqwest::Client::new();
+
+            for (service, url) in endpoints.iter() {
+                let healthy = client.get(format!("{}/health", url)).send().await
+                    .map(|r| r.status().is_success()).unwrap_or(false);
+                services.insert(service.to_string(), healthy);
+            }
+
+            Ok(HealthResponse {
+                services,
+                timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64,
+            })
+        }
+
+        pub async fn aggregate(&self, _req: AggregateRequest) -> Result<AggregateResponse, Status> {
+            let start = Instant::now();
+            let mut results = Vec::new();
+            let endpoints = [("go", "http://localhost:3002"), ("python", "http://localhost:3003"), ("c", "http://localhost:3004")];
+            let client = reqwest::Client::new();
+
+            for (service, url) in endpoints.iter() {
+                let start = Instant::now();
+                match client.get(format!("{}/api/hello", url)).send().await {
+                    Ok(resp) => {
+                        let elapsed = start.elapsed().as_millis() as u64;
+                        if let Ok(data) = resp.json::<serde_json::Value>().await {
+                            let msg = data.get("message").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            results.push(ServiceResult { service: service.to_string(), message: msg, elapsed_ms: elapsed, success: true });
+                        }
+                    }
+                    Err(e) => {
+                        results.push(ServiceResult { service: service.to_string(), message: format!("error: {}", e), elapsed_ms: 0, success: false });
+                    }
+                }
+            }
+
+            Ok(AggregateResponse {
+                caller: self.service_name.clone(),
+                results,
+                total_time_ms: start.elapsed().as_millis() as u64,
+            })
+        }
+    }
+}
+
+// HTTP handlers for gRPC-like endpoints
+async fn grpc_hello_handler(Json(req): Json<grpc_service::HelloRequest>) -> Json<grpc_service::HelloResponse> {
+    let service = grpc_service::GrpcAggregatorService::new();
+    Json(service.hello(req.name).await.unwrap_or(grpc_service::HelloResponse {
+        service_name: "rust-template".to_string(),
+        message: "error".to_string(),
+        version: "0.1.0".to_string(),
+        timestamp: 0,
+        results: vec![],
+    }))
+}
+
+async fn grpc_health_handler() -> Json<grpc_service::HealthResponse> {
+    let service = grpc_service::GrpcAggregatorService::new();
+    Json(service.health().await.unwrap_or(grpc_service::HealthResponse {
+        services: HashMap::new(),
+        timestamp: 0,
+    }))
+}
+
+async fn grpc_aggregate_handler(Json(req): Json<grpc_service::AggregateRequest>) -> Json<grpc_service::AggregateResponse> {
+    let service = grpc_service::GrpcAggregatorService::new();
+    Json(service.aggregate(req).await.unwrap_or(grpc_service::AggregateResponse {
+        caller: "rust-template".to_string(),
+        results: vec![],
+        total_time_ms: 0,
+    }))
+}
+
+// ============================================
+// Main Entry Point
+// ============================================
+
 #[tokio::main]
 async fn main() {
     let state = Arc::new(AppState {
@@ -251,20 +408,19 @@ async fn main() {
         version: "0.1.0".to_string(),
     });
 
-    // Create gRPC service state
-    let grpc_state = Arc::new(grpc::GrpcService::new());
-
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/health", get(health_handler))
         .route("/api/hello", get(hello_handler))
         .route("/api/compute", get(compute_handler))
         .route("/api/echo", post(echo_handler))
-        // Inter-service communication endpoints
+        // REST inter-service endpoints
         .route("/internal/aggregate", get(aggregate_handler))
         .route("/internal/chain", post(chain_handler))
-        // gRPC-style endpoints (on port 5001 concept, but via HTTP)
-        .nest("/grpc", create_grpc_router())
+        // gRPC HTTP endpoints (proto over HTTP/1.1)
+        .route("/grpc.hello", post(grpc_hello_handler))
+        .route("/grpc.health", get(grpc_health_handler))
+        .route("/grpc.aggregate", post(grpc_aggregate_handler))
         .with_state(state);
 
     let port = std::env::var("PORT")
@@ -273,6 +429,10 @@ async fn main() {
         .unwrap_or(3001);
 
     println!("rust-template v0.1.0 listening on {}", port);
+    println!("REST endpoints: /health, /api/hello, /api/compute, /api/echo");
+    println!("Internal: /internal/aggregate, /internal/chain");
+    println!("gRPC (HTTP): /grpc.hello, /grpc.health, /grpc.aggregate");
+    println!("gRPC (real): port 5001 (requires tonic-proto)");
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await

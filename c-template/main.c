@@ -424,7 +424,11 @@ int main() {
     }
 
     printf("C template listening on port %d\n", PORT);
-    getchar();
+
+    // Keep running - in production use signal handling
+    while(1) {
+        sleep(60);
+    }
 
     MHD_stop_daemon(daemon);
     curl_global_cleanup();

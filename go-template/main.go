@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -65,7 +64,7 @@ type GrpcAggregateRequest struct {
 type ServiceResult struct {
 	Service    string `json:"service"`
 	Message    string `json:"message"`
-	ElapsedMs  uint64 `json:"elapsed_ms"`
+	ElapsedMs  int64  `json:"elapsed_ms"`
 	Success    bool   `json:"success"`
 }
 

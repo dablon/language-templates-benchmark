@@ -7,8 +7,9 @@ import os
 import asyncio
 import time
 from typing import List, Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
+import uvicorn
 import httpx
 
 app = FastAPI(title="Gateway - Inter-Service Aggregator")
@@ -336,8 +337,8 @@ async def grpc_aggregate(request: Request):
 
 
 # ============================================
-// Service Mesh Endpoints (Consul-style)
-// ============================================
+# Service Mesh Endpoints (Consul-style)
+# ============================================
 
 @app.get("/api/mesh/services")
 async def mesh_services():
