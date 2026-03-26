@@ -18,6 +18,11 @@
 static char db_conn_string[512] = {0};
 static int db_available = 0;
 
+// Feature flags
+static int enable_grpc = 0;
+static int enable_database = 0;
+static int enable_consul = 0;
+
 // Forward declarations
 static int handle_index(struct MHD_Connection *connection);
 static int handle_health(struct MHD_Connection *connection);
@@ -463,7 +468,7 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
             return handle_aggregate(connection);
         } else if (strcmp(url, "/internal/chain") == 0) {
             return handle_aggregate(connection);  // POST would be different
-        } else if (strcmp(url, "/grpc/health") == 0) {
+        } else if (enable_grpc && strcmp(url, "/grpc/health") == 0) {
             return handle_grpc_health(connection);
         }
     } else if (strcmp(method, "POST") == 0) {
@@ -478,10 +483,19 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
             }
         } else if (strcmp(url, "/internal/chain") == 0) {
             return handle_chain(connection);
-        } else if (strcmp(url, "/grpc/hello") == 0) {
+        } else if (enable_grpc && strcmp(url, "/grpc/hello") == 0) {
             return handle_grpc_hello(connection, upload_data, *upload_data_size);
-        } else if (strcmp(url, "/grpc/aggregate") == 0) {
+        } else if (enable_grpc && strcmp(url, "/grpc/aggregate") == 0) {
             return handle_grpc_aggregate(connection, upload_data, *upload_data_size);
+        }
+    }
+
+    // Database routes - only if enable_database is set
+    if (enable_database) {
+        if (strcmp(url, "/db/records") == 0) {
+            return handle_db_records(connection);
+        } else if (strncmp(url, "/db/records/", 12) == 0) {
+            return handle_db_record(connection, url);
         }
     }
 
@@ -602,6 +616,25 @@ static int handle_grpc_aggregate(struct MHD_Connection *connection,
 int main() {
     // Initialize curl global
     curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    // Read feature flags from environment
+    char *enable_grpc_env = getenv("ENABLE_GRPC");
+    if (enable_grpc_env && strcmp(enable_grpc_env, "true") == 0) {
+        enable_grpc = 1;
+        printf("ENABLE_GRPC=true - gRPC endpoints enabled\n");
+    }
+
+    char *enable_db_env = getenv("ENABLE_DATABASE");
+    if (enable_db_env && strcmp(enable_db_env, "true") == 0) {
+        enable_database = 1;
+        printf("ENABLE_DATABASE=true - Database enabled\n");
+    }
+
+    char *enable_consul_env = getenv("ENABLE_CONSUL");
+    if (enable_consul_env && strcmp(enable_consul_env, "true") == 0) {
+        enable_consul = 1;
+        printf("ENABLE_CONSUL=true - Consul service mesh enabled\n");
+    }
 
     struct MHD_Daemon *daemon;
 

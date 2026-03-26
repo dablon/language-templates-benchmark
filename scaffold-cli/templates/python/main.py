@@ -16,8 +16,13 @@ VERSION = "0.1.0"
 db_pool = None
 
 async def init_db():
-    """Initialize database connection pool."""
+    """Initialize database connection pool based on ENABLE_DATABASE flag."""
     global db_pool
+    enable_db = os.getenv("ENABLE_DATABASE", "false").lower() == "true"
+    if not enable_db:
+        print("ENABLE_DATABASE=false, skipping database connection")
+        return
+
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         try:

@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS benchmark_records (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     value INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insert sample data
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     operation VARCHAR(20) NOT NULL,
     duration_ms INTEGER NOT NULL,
     success BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_benchmark_results_service ON benchmark_results(service_name);

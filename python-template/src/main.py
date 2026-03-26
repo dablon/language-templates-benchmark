@@ -1,16 +1,53 @@
 """
 Python Web Service Template
-FastAPI with 3 benchmark endpoints
+FastAPI with 3 benchmark endpoints + PostgreSQL CRUD
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from pathlib import Path
 import hashlib
 import time
+import os
+import asyncpg
 
-app = FastAPI(title="Python Template", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup/shutdown."""
+    # Startup: initialize database
+    await init_db()
+    yield
+    # Shutdown: close database connections
+    if db_pool:
+        await db_pool.close()
+
+app = FastAPI(title="Python Template", version="0.1.0", lifespan=lifespan)
+
+# Database connection pool
+db_pool = None
+
+
+async def init_db():
+    """Initialize database connection pool."""
+    global db_pool
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        try:
+            db_pool = await asyncpg.create_pool(
+                database_url,
+                min_size=2,
+                max_size=10,
+                command_timeout=60
+            )
+            print("PostgreSQL connected successfully")
+        except Exception as e:
+            print(f"Failed to connect to PostgreSQL: {e}")
+            db_pool = None
+    else:
+        print("DATABASE_URL not set, skipping database connection")
 
 # ============================================
 # 1. JSON API - Simple greeting
@@ -93,6 +130,98 @@ async def index():
         return HTMLResponse(content=html_path.read_text())
     return {"message": "Python Template"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3003)
+
+# ============================================
+# Database CRUD Endpoints
+# ============================================
+
+@app.get("/db/records")
+async def get_records():
+    """Get all benchmark records."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id, name, description, value, created_at, updated_at FROM benchmark_records ORDER BY id")
+        return [{"id": r["id"], "name": r["name"], "description": r["description"], "value": r["value"],
+                 "created_at": r["created_at"].isoformat(), "updated_at": r["updated_at"].isoformat()} for r in rows]
+
+
+@app.get("/db/records/{record_id}")
+async def get_record(record_id: int):
+    """Get a single benchmark record by ID."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT id, name, description, value, created_at, updated_at FROM benchmark_records WHERE id = $1", record_id)
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Record {record_id} not found")
+        return {"id": row["id"], "name": row["name"], "description": row["description"], "value": row["value"],
+                "created_at": row["created_at"].isoformat(), "updated_at": row["updated_at"].isoformat()}
+
+
+@app.post("/db/records")
+async def create_record(request: Request):
+    """Create a new benchmark record."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        body = await request.json()
+    except:
+        body = {}
+
+    name = body.get("name", "New Record")
+    description = body.get("description")
+    value = body.get("value", 0)
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO benchmark_records (name, description, value) VALUES ($1, $2, $3) RETURNING id, name, description, value, created_at, updated_at",
+            name, description, value
+        )
+        return {"id": row["id"], "name": row["name"], "description": row["description"], "value": row["value"],
+                "created_at": row["created_at"].isoformat(), "updated_at": row["updated_at"].isoformat()}
+
+
+@app.put("/db/records/{record_id}")
+async def update_record(record_id: int, request: Request):
+    """Update an existing benchmark record."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    try:
+        body = await request.json()
+    except:
+        body = {}
+
+    name = body.get("name")
+    description = body.get("description")
+    value = body.get("value")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE benchmark_records SET name = COALESCE($1, name), description = COALESCE($2, description), value = COALESCE($3, value), updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING id, name, description, value, created_at, updated_at",
+            name, description, value, record_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Record {record_id} not found")
+        return {"id": row["id"], "name": row["name"], "description": row["description"], "value": row["value"],
+                "created_at": row["created_at"].isoformat(), "updated_at": row["updated_at"].isoformat()}
+
+
+@app.delete("/db/records/{record_id}")
+async def delete_record(record_id: int):
+    """Delete a benchmark record."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM benchmark_records WHERE id = $1", record_id)
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail=f"Record {record_id} not found")
+        return {"success": True, "deleted": record_id}
+
+
+# Run with: uvicorn src.main:app --host 0.0.0.0 --port 3003

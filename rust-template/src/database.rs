@@ -24,8 +24,8 @@ pub struct BenchmarkRecord {
     pub name: String,
     pub description: Option<String>,
     pub value: i32,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 /// Create new record request
@@ -47,7 +47,7 @@ pub struct UpdateRecordRequest {
 /// Get all records
 pub async fn get_all_records(pool: &DbPool) -> Result<Vec<BenchmarkRecord>, sqlx::Error> {
     let records = sqlx::query_as::<_, BenchmarkRecord>(
-        "SELECT id, name, description, value, created_at, updated_at FROM benchmark_records ORDER BY id"
+        "SELECT id, name, description, value, created_at::text as created_at, updated_at::text as updated_at FROM benchmark_records ORDER BY id"
     )
     .fetch_all(pool)
     .await?;
@@ -58,7 +58,7 @@ pub async fn get_all_records(pool: &DbPool) -> Result<Vec<BenchmarkRecord>, sqlx
 /// Get record by ID
 pub async fn get_record_by_id(pool: &DbPool, id: i32) -> Result<Option<BenchmarkRecord>, sqlx::Error> {
     let record = sqlx::query_as::<_, BenchmarkRecord>(
-        "SELECT id, name, description, value, created_at, updated_at FROM benchmark_records WHERE id = $1"
+        "SELECT id, name, description, value, created_at::text as created_at, updated_at::text as updated_at FROM benchmark_records WHERE id = $1"
     )
     .bind(id)
     .fetch_optional(pool)
@@ -76,7 +76,7 @@ pub async fn create_record(
 ) -> Result<BenchmarkRecord, sqlx::Error> {
     let record = sqlx::query_as::<_, BenchmarkRecord>(
         "INSERT INTO benchmark_records (name, description, value) VALUES ($1, $2, $3)
-         RETURNING id, name, description, value, created_at, updated_at"
+         RETURNING id, name, description, value, created_at::text as created_at, updated_at::text as updated_at"
     )
     .bind(name)
     .bind(description)
@@ -96,7 +96,7 @@ pub async fn update_record(
     value: Option<i32>,
 ) -> Result<Option<BenchmarkRecord>, sqlx::Error> {
     let record = sqlx::query_as::<_, BenchmarkRecord>(
-        "UPDATE benchmark_records SET name = COALESCE($1, name), description = COALESCE($2, description), value = COALESCE($3, value), updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING id, name, description, value, created_at, updated_at"
+        "UPDATE benchmark_records SET name = COALESCE($1, name), description = COALESCE($2, description), value = COALESCE($3, value), updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING id, name, description, value, created_at::text as created_at, updated_at::text as updated_at"
     )
     .bind(name)
     .bind(description)

@@ -590,8 +590,11 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
 
-	// Initialize database
-	initDB()
+	// Initialize database only if DATABASE_URL is set and ENABLE_DATABASE=true
+	enableDB := os.Getenv("ENABLE_DATABASE")
+	if enableDB == "true" && os.Getenv("DATABASE_URL") != "" {
+		initDB()
+	}
 
 	r.GET("/", index)
 	r.GET("/health", health)
@@ -602,20 +605,28 @@ func main() {
 	r.GET("/internal/aggregate", aggregate)
 	r.POST("/internal/chain", chain)
 
-	// gRPC-style endpoints
-	r.POST("/grpc/hello", grpcHelloHandler)
-	r.GET("/grpc/health", grpcHealthHandler)
-	r.POST("/grpc/aggregate", grpcAggregateHandler)
+	// gRPC-style endpoints - enable with ENABLE_GRPC=true
+	enableGrpc := os.Getenv("ENABLE_GRPC")
+	if enableGrpc == "true" {
+		r.POST("/grpc/hello", grpcHelloHandler)
+		r.GET("/grpc/health", grpcHealthHandler)
+		r.POST("/grpc/aggregate", grpcAggregateHandler)
+	}
 
-	// Database CRUD endpoints
-	r.GET("/db/records", getRecords)
-	r.GET("/db/records/:id", getRecord)
-	r.POST("/db/records", createRecord)
-	r.PUT("/db/records/:id", updateRecord)
-	r.DELETE("/db/records/:id", deleteRecord)
+	// Database CRUD endpoints - enable with ENABLE_DATABASE=true
+	if enableDB == "true" {
+		r.GET("/db/records", getRecords)
+		r.GET("/db/records/:id", getRecord)
+		r.POST("/db/records", createRecord)
+		r.PUT("/db/records/:id", updateRecord)
+		r.DELETE("/db/records/:id", deleteRecord)
+	}
 
-	// Register with Consul for service mesh (placeholder)
-	go registerWithConsul()
+	// Register with Consul for service mesh - enable with ENABLE_CONSUL=true
+	enableConsul := os.Getenv("ENABLE_CONSUL")
+	if enableConsul == "true" {
+		go registerWithConsul()
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {

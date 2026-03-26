@@ -6,6 +6,55 @@ Comparative benchmark of web service templates across multiple programming langu
 
 This project provides production-ready web service templates in different programming languages, all implementing the same API surface for fair performance comparison.
 
+## Scaffold CLI
+
+Quickly generate new projects with the **scaffold-cli** tool:
+
+```bash
+# Build the CLI
+cd scaffold-cli
+cargo build --release
+
+# Run with interactive prompts
+./target/release/scaffold-cli.exe
+
+# Or use CLI flags
+./target/release/scaffold-cli.exe -n myproject -l go -p grpc -d postgres
+```
+
+### CLI Options
+
+| Flag | Short | Description | Values |
+|------|-------|-------------|--------|
+| `--name` | `-n` | Project name | string (required) |
+| `--language` | `-l` | Programming language | `go`, `python`, `rust`, `c` |
+| `--protocol` | `-p` | Protocol type | `http`, `grpc`, `service-mesh` |
+| `--database` | `-d` | Database options | `none`, `postgres`, `postgres-redis` |
+| `--output` | `-o` | Output directory | path |
+
+### Examples
+
+```bash
+# HTTP only, no database (fastest startup)
+./scaffold-cli.exe -n my-api -l go -p http -d none
+
+# gRPC with PostgreSQL
+./scaffold-cli.exe -n my-service -l rust -p grpc -d postgres
+
+# Full service mesh with PostgreSQL + Redis
+./scaffold-cli.exe -n my-mesh -l python -p service-mesh -d postgres-redis
+```
+
+### Generated Project Features
+
+The CLI generates projects with runtime feature flags:
+
+- `ENABLE_GRPC=true/false` - enables gRPC endpoints
+- `ENABLE_DATABASE=true/false` - enables PostgreSQL connection and CRUD routes
+- `ENABLE_CONSUL=true/false` - enables Consul service mesh registration
+
+The generated `docker-compose.yml` automatically configures the appropriate services (PostgreSQL, Redis, Consul) based on your selection.
+
 ## Templates
 
 | Language | Framework | Port | Status |
@@ -136,12 +185,24 @@ See [BENCHMARK_RESULTS.md](./BENCHMARK_RESULTS.md) for latest benchmark data.
 
 ## Adding a New Template
 
+Option 1: Use the **scaffold-cli** to generate a base project, then customize:
+
+```bash
+# Generate a base template
+./scaffold-cli/target/release/scaffold-cli.exe -n my-template -l <language> -p http -d none
+
+# Then add your custom code and features
+```
+
+Option 2: Create manually:
+
 1. Create a new directory for your language (e.g., `java-template/`)
 2. Follow the standard project structure
 3. Implement all API endpoints
 4. Add Dockerfile with multi-stage build
 5. Update `docker-compose.yml` with your service
-6. Submit a pull request
+6. Add template to `scaffold-cli/templates/` for CLI support
+7. Submit a pull request
 
 ## Contributing
 

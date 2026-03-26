@@ -412,20 +412,30 @@ async fn grpc_aggregate_handler(Json(req): Json<grpc_service::AggregateRequest>)
 
 #[tokio::main]
 async fn main() {
-    // Try to initialize database connection
-    let db_pool = if let Ok(database_url) = std::env::var("DATABASE_URL") {
-        match database::init_db(&database_url).await {
-            Ok(pool) => {
-                println!("PostgreSQL connected successfully");
-                Some(pool)
+    // Check if database is enabled via env var
+    let enable_db = std::env::var("ENABLE_DATABASE")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
+
+    // Try to initialize database connection only if ENABLE_DATABASE=true
+    let db_pool = if enable_db {
+        if let Ok(database_url) = std::env::var("DATABASE_URL") {
+            match database::init_db(&database_url).await {
+                Ok(pool) => {
+                    println!("PostgreSQL connected successfully");
+                    Some(pool)
+                }
+                Err(e) => {
+                    eprintln!("Failed to connect to PostgreSQL: {}", e);
+                    None
+                }
             }
-            Err(e) => {
-                eprintln!("Failed to connect to PostgreSQL: {}", e);
-                None
-            }
+        } else {
+            println!("DATABASE_URL not set, skipping database connection");
+            None
         }
     } else {
-        println!("DATABASE_URL not set, skipping database connection");
+        println!("ENABLE_DATABASE=false, skipping database connection");
         None
     };
 
@@ -443,15 +453,34 @@ async fn main() {
         .route("/api/echo", post(echo_handler))
         // REST inter-service endpoints
         .route("/internal/aggregate", get(aggregate_handler))
-        .route("/internal/chain", post(chain_handler))
-        // gRPC HTTP endpoints (proto over HTTP/1.1)
-        .route("/grpc.hello", post(grpc_hello_handler))
-        .route("/grpc.health", get(grpc_health_handler))
-        .route("/grpc.aggregate", post(grpc_aggregate_handler));
+        .route("/internal/chain", post(chain_handler));
+
+    // Add gRPC routes only if ENABLE_GRPC=true
+    let enable_grpc = std::env::var("ENABLE_GRPC")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
+
+    if enable_grpc {
+        println!("gRPC endpoints enabled");
+        app = app
+            .route("/grpc.hello", post(grpc_hello_handler))
+            .route("/grpc.health", get(grpc_health_handler))
+            .route("/grpc.aggregate", post(grpc_aggregate_handler));
+    }
 
     // Add database routes if pool is available
     if let Some(pool) = db_pool {
         app = app.merge(routes::database::create_db_router().with_state(pool));
+    }
+
+    // Service mesh: register with Consul if ENABLE_CONSUL=true
+    let enable_consul = std::env::var("ENABLE_CONSUL")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
+
+    if enable_consul {
+        println!("Consul service mesh enabled");
+        // TODO: Add Consul registration code here
     }
 
     let app = app.with_state(state);
@@ -464,8 +493,12 @@ async fn main() {
     println!("rust-template v0.1.0 listening on {}", port);
     println!("REST endpoints: /health, /api/hello, /api/compute, /api/echo");
     println!("Internal: /internal/aggregate, /internal/chain");
-    println!("gRPC (HTTP): /grpc.hello, /grpc.health, /grpc.aggregate");
-    println!("Database: /db/records (CRUD operations)");
+    if enable_grpc {
+        println!("gRPC (HTTP): /grpc.hello, /grpc.health, /grpc.aggregate");
+    }
+    if db_pool.is_some() {
+        println!("Database: /db/records (CRUD operations)");
+    }
     println!("gRPC (real): port 5001 (requires tonic-proto)");
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))

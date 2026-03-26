@@ -305,12 +305,15 @@ fn generate_docker_compose(
 "#,
     );
 
-    // Add database env vars
+    // Add database env vars and ENABLE_DATABASE flag
     match database {
         Database::Postgres | Database::PostgresRedis => {
             service_config.push_str("      - DATABASE_URL=postgresql://benchmark:benchmark123@postgres:5432/benchmark_db\n");
+            service_config.push_str("      - ENABLE_DATABASE=true\n");
         }
-        Database::None => {}
+        Database::None => {
+            service_config.push_str("      - ENABLE_DATABASE=false\n");
+        }
     }
 
     // Add Redis env var
@@ -318,13 +321,26 @@ fn generate_docker_compose(
         service_config.push_str("      - REDIS_URL=redis://redis:6379\n");
     }
 
-    // Add service mesh env vars
+    // Add gRPC and service mesh flags
+    match protocol {
+        Protocol::Http => {
+            service_config.push_str("      - ENABLE_GRPC=false\n");
+            service_config.push_str("      - ENABLE_CONSUL=false\n");
+        }
+        Protocol::Grpc => {
+            service_config.push_str("      - ENABLE_GRPC=true\n");
+            service_config.push_str("      - ENABLE_CONSUL=false\n");
+        }
+        Protocol::ServiceMesh => {
+            service_config.push_str("      - ENABLE_GRPC=true\n");
+            service_config.push_str("      - ENABLE_CONSUL=true\n");
+        }
+    }
+
+    // Add service mesh additional env vars (Consul address already handled above)
     if matches!(protocol, Protocol::ServiceMesh) {
-        service_config.push_str(
-            r#"      - CONSUL_ADDR=consul:8500
-      - SERVICE_NAME=project_name
-"#,
-        );
+        service_config.push_str("      - SERVICE_NAME=project_name\n");
+        service_config.push_str("      - CONSUL_ADDR=consul:8500\n");
     }
 
     // Add depends_on
