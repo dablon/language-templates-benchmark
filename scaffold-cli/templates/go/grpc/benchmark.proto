@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package benchmark;
+
+option go_package = ".;benchmark";
+
+service Benchmark {
+    rpc Health(HealthRequest) returns (HealthResponse);
+    rpc Hello(HelloRequest) returns (HelloResponse);
+    rpc Compute(ComputeRequest) returns (ComputeResponse);
+    rpc Echo(EchoRequest) returns (EchoResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string service = 1;
+    string status = 2;
+    string version = 3;
+    int64 uptime_ns = 4;
+    int64 timestamp = 5;
+}
+
+message HelloRequest {}
+
+message HelloResponse {
+    string service = 1;
+    string message = 2;
+    string version = 3;
+    int64 timestamp = 4;
+}
+
+message ComputeRequest {
+    int64 n = 1;
+}
+
+message ComputeResponse {
+    string operation = 1;
+    int64 fibonacci_input = 2;
+    int64 fibonacci_value = 3;
+    int64 primes_count = 4;
+    int64 execution_time_ns = 5;
+    string service = 6;
+}
+
+message EchoRequest {
+    string body = 1;
+}
+
+message EchoResponse {
+    int64 original_length = 1;
+    string uppercase = 2;
+    string lowercase = 3;
+    string service = 4;
+}

@@ -122,14 +122,19 @@ fn get_interactive_inputs() -> (String, Language, Protocol, Database) {
     (name, language, protocol, database)
 }
 
-/// Get template source directory based on language
-fn get_template_source(language: &Language) -> PathBuf {
+/// Get template source directory based on language AND protocol
+fn get_template_source(language: &Language, protocol: &Protocol) -> PathBuf {
     let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let proto_dir = match protocol {
+        Protocol::Http => "http",
+        Protocol::Grpc => "grpc",
+        Protocol::ServiceMesh => "service-mesh",
+    };
     match language {
-        Language::Go => base.join("templates").join("go"),
-        Language::Python => base.join("templates").join("python"),
-        Language::Rust => base.join("templates").join("rust"),
-        Language::C => base.join("templates").join("c"),
+        Language::Go => base.join("templates").join("go").join(proto_dir),
+        Language::Python => base.join("templates").join("python").join(proto_dir),
+        Language::Rust => base.join("templates").join("rust").join(proto_dir),
+        Language::C => base.join("templates").join("c").join(proto_dir),
     }
 }
 
@@ -462,7 +467,7 @@ fn scaffold_project(
     }
 
     // Get template source
-    let template_source = get_template_source(&language);
+    let template_source = get_template_source(&language, &protocol);
     println!("\n{}", "  📦 Copying template files...".yellow());
 
     // Copy template
