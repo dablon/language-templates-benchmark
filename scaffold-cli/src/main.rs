@@ -192,6 +192,7 @@ fn replace_placeholders(content: &str, project_name: &str) -> String {
     // Replace common placeholders
     let placeholders = [
         ("template-name", project_name),
+        ("{{PROJECT_NAME}}", project_name),
         ("go-template", project_name),
         ("python-template", project_name),
         ("rust-template", project_name),

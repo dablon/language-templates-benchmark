@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,7 +31,7 @@ type BenchmarkRecord struct {
 }
 
 func initDB() {
-	enableDB := os.Getenv("ENABLE_DATABASE", "false")
+	enableDB := os.Getenv("ENABLE_DATABASE")
 	if enableDB != "true" {
 		log.Println("ENABLE_DATABASE=false, skipping database connection")
 		return
