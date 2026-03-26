@@ -4,13 +4,13 @@ FastAPI with 3 benchmark endpoints
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 import hashlib
 import time
 
 app = FastAPI(title="Python Template", version="0.1.0")
-
-static_path = None
 
 # ============================================
 # 1. JSON API - Simple greeting
@@ -42,15 +42,10 @@ def is_prime(n):
 @app.get("/api/compute")
 async def compute(n: int = 30):
     start = time.time()
-    
-    # Calculate fibonacci
-    fib_result = fibonacci(min(n, 35))
-    
-    # Find primes
+    n_capped = min(n, 35)
+    fib_result = fibonacci(n_capped)
     primes = [i for i in range(2, min(n * 10, 500)) if is_prime(i)]
-    
     elapsed = (time.time() - start) * 1000
-    
     return {
         "operation": "compute",
         "fibonacci_35": fib_result,
@@ -65,12 +60,9 @@ async def compute(n: int = 30):
 @app.post("/api/echo")
 async def echo(request: Request):
     body = await request.body()
-    text = body.decode('utf-8')
+    text = body.decode("utf-8")
     words = text.split()
-    
-    # SHA256 hash
     sha = hashlib.sha256(text.encode()).hexdigest()[:16]
-    
     return {
         "original_length": len(text),
         "word_count": len(words),
@@ -90,10 +82,9 @@ async def health():
 # ============================================
 # Static Files
 # ============================================
-from pathlib import Path
 static_path = Path(__file__).parent.parent / "static"
 if static_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+    app.mount("/static", StaticFiles(directory=str(static_path)))
 
 @app.get("/")
 async def index():
