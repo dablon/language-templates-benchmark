@@ -1,0 +1,31 @@
+# ===== SECRETS & SENSITIVE CONFIG =====
+.env
+.env.*
+!.env.example
+*.local
+
+# ===== BUILD ARTIFACTS =====
+target/
+dist/
+build/
+*.o
+*.so
+*.a
+__pycache__/
+*.pyc
+
+# ===== GO =====
+vendor/
+
+# ===== DOCKER =====
+.docker/
+
+# ===== LOGS & TEMP =====
+*.log
+logs/
+tmp/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
