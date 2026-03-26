@@ -1,4 +1,4 @@
-module go-template
+module github.com/dablon/language-templates-benchmark/go-template
 
 go 1.21
 
