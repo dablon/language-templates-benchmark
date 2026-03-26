@@ -1,20 +1,19 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -pthread
-LDFLAGS = -lmicrohttpd -lcurl -ljson-c -pthread
+CFLAGS = -Wall -O2 -std=c11
+LDFLAGS = -lmicrohttpd
 
-TARGET = c-template
+TARGET = server
 SRC = main.c
-OBJ = $(SRC:.c=.o)
-
-.PHONY: all clean
 
 all: $(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CC) $(OBJ) $(LDFLAGS) -o $@
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS)
 
 clean:
-	rm -f $(TARGET) $(OBJ)
+	rm -f $(TARGET)
+
+run: $(TARGET)
+	./$(TARGET)
+
+.PHONY: all clean run
