@@ -37,8 +37,9 @@ COPY --from=builder /app/src/ ./src/
 COPY --from=builder /app/static/ ./static/
 
 # Create non-root user
-RUN useradd --uid 1000 --gid 1000 --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
+RUN groupadd --gid 1000 appgroup && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash appuser && \
+    chown -R appuser:appgroup /app
 
 # Switch to non-root user
 USER appuser

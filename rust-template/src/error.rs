@@ -8,10 +8,9 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use thiserror::ThisError;
 
 /// Application error type
-#[derive(ThisError, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum AppError {
     #[error("Not found: {0}")]
     NotFound(String),

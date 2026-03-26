@@ -16,10 +16,11 @@ use crate::constants;
 use crate::models::response::HelloResponse;
 
 /// Create API routes
-pub fn routes() -> Router {
+pub fn routes() -> Router<Arc<Config>> {
     Router::new()
         .route("/hello", axum::routing::get(hello_handler))
         .route("/echo", axum::routing::post(echo_handler))
+        .with_state(Arc::new(Config::default()))
 }
 
 /// GET /api/hello

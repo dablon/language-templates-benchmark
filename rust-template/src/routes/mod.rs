@@ -4,7 +4,9 @@
 //! - api: REST API endpoints
 //! - health: Health check endpoint
 //! - web: Web HTML endpoints
+//! - internal: Service-to-service communication
 
 pub mod api;
 pub mod health;
+pub mod internal;
 pub mod web;

@@ -2,13 +2,14 @@
 # Multi-stage build for optimized production image
 
 # Stage 1: Build
-FROM rust:1.75-slim as builder
+FROM rust:1.85-slim as builder
 
 WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests

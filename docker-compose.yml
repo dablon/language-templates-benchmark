@@ -1,46 +1,115 @@
 version: '3.8'
 
 services:
+  # ============================================
+  # REST Gateway - Aggregates all services
+  # ============================================
+  gateway:
+    build: ./gateway
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    environment:
+      - RUST_URL=http://rust-template:3001
+      - GO_URL=http://go-template:3002
+      - PYTHON_URL=http://python-template:3003
+      - C_URL=http://c-template:3004
+    depends_on:
+      - rust-template
+      - go-template
+      - python-template
+      - c-template
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - benchmark-net
+
+  # ============================================
+  # Rust Service (Axum)
+  # ============================================
   rust-template:
     build: ./rust-template
     ports:
       - "3001:3001"
     restart: unless-stopped
+    environment:
+      - GO_SERVICE_URL=http://go-template:3002
+      - PYTHON_SERVICE_URL=http://python-template:3003
+      - C_SERVICE_URL=http://c-template:3004
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - benchmark-net
 
+  # ============================================
+  # Go Service (Gin)
+  # ============================================
   go-template:
     build: ./go-template
     ports:
       - "3002:3002"
     restart: unless-stopped
+    environment:
+      - RUST_SERVICE_URL=http://rust-template:3001
+      - PYTHON_SERVICE_URL=http://python-template:3003
+      - C_SERVICE_URL=http://c-template:3004
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - benchmark-net
 
+  # ============================================
+  # Python Service (FastAPI)
+  # ============================================
   python-template:
     build: ./python-template
     ports:
       - "3003:3003"
     restart: unless-stopped
+    environment:
+      - RUST_SERVICE_URL=http://rust-template:3001
+      - GO_SERVICE_URL=http://go-template:3002
+      - C_SERVICE_URL=http://c-template:3004
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - benchmark-net
 
+  # ============================================
+  # C Service (libmicrohttpd)
+  # ============================================
   c-template:
     build: ./c-template
     ports:
       - "3004:3004"
     restart: unless-stopped
+    environment:
+      - RUST_SERVICE_URL=http://rust-template:3001
+      - GO_SERVICE_URL=http://go-template:3002
+      - PYTHON_SERVICE_URL=http://python-template:3003
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - benchmark-net
+
+# ============================================
+# Network Configuration
+# ============================================
+networks:
+  benchmark-net:
+    driver: bridge

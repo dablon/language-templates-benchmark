@@ -12,13 +12,74 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::convert::Infallible;
-use tokio::time::Instant;
+use std::time::Instant;
+use std::collections::HashMap;
 
 // Application state
 #[derive(Clone)]
 struct AppState {
     service_name: String,
     version: String,
+}
+
+// REST client for inter-service communication
+#[derive(Clone)]
+struct RestClient {
+    client: reqwest::Client,
+    endpoints: HashMap<String, String>,
+}
+
+impl RestClient {
+    fn new() -> Self {
+        let mut endpoints = HashMap::new();
+        endpoints.insert("go".to_string(), "http://localhost:3002".to_string());
+        endpoints.insert("python".to_string(), "http://localhost:3003".to_string());
+        endpoints.insert("c".to_string(), "http://localhost:3004".to_string());
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .unwrap();
+
+        Self { client, endpoints }
+    }
+
+    async fn call_service(&self, key: &str, path: &str) -> serde_json::Value {
+        let url = match self.endpoints.get(key) {
+            Some(u) => format!("{}{}", u, path),
+            None => return serde_json::json!({"error": "service not found"}),
+        };
+
+        let start = Instant::now();
+        match self.client.get(&url).send().await {
+            Ok(resp) => {
+                let elapsed = start.elapsed().as_millis() as u64;
+                if resp.status().is_success() {
+                    if let Ok(data) = resp.json::<serde_json::Value>().await {
+                        let mut result = data;
+                        result["elapsed_ms"] = serde_json::json!(elapsed);
+                        result
+                    } else {
+                        serde_json::json!({"error": "parse error", "elapsed_ms": elapsed})
+                    }
+                } else {
+                    serde_json::json!({"error": format!("http {}", resp.status()), "elapsed_ms": elapsed})
+                }
+            }
+            Err(e) => serde_json::json!({"error": e.to_string(), "elapsed_ms": start.elapsed().as_millis() as u64})
+        }
+    }
+
+    async fn call_all(&self, path: &str) -> Vec<serde_json::Value> {
+        let keys = vec!["go", "python", "c"];
+        let mut results = vec![];
+
+        for key in keys {
+            results.push(self.call_service(key, path).await);
+        }
+
+        results
+    }
 }
 
 // ============================================
@@ -106,7 +167,7 @@ async fn echo_handler(
     let text = String::from_utf8_lossy(&bytes).to_string();
     let word_count = text.split_whitespace().count();
     let char_count = text.chars().filter(|c| !c.is_whitespace()).count();
-    let simple_hash = format!("{:x}", text.len().wrapping_mul(17).wrapping_add(text.chars().fold(0u64, |acc, c| acc.wrapping_add(c as u64)));
+    let simple_hash = format!("{:x}", text.len().wrapping_mul(17).wrapping_add(text.chars().fold(0usize, |acc, c| acc.wrapping_add(c as usize))));
     let hash_prefix = &simple_hash[..16.min(simple_hash.len())];
     
     Ok(Json(serde_json::json!({
@@ -139,6 +200,50 @@ async fn index_handler() -> impl IntoResponse {
     Html(include_str!("../static/index.html"))
 }
 
+// ============================================
+// Service Communication Endpoints
+// ============================================
+
+// Call all other services and aggregate responses
+async fn aggregate_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let client = RestClient::new();
+    let start = Instant::now();
+    let results = client.call_all("/api/hello").await;
+    let elapsed = start.elapsed().as_millis() as u64;
+
+    Json(serde_json::json!({
+        "caller": state.service_name,
+        "results": results,
+        "total_time_ms": elapsed
+    }))
+}
+
+// Chain call: sequential service communication
+async fn chain_handler(
+    State(state): State<Arc<AppState>>,
+    body: Body,
+) -> Result<impl IntoResponse, Infallible> {
+    let bytes = axum::body::to_bytes(body, 1024 * 1024).await.unwrap_or_default();
+    let text = String::from_utf8_lossy(&bytes).to_string();
+
+    let client = RestClient::new();
+    let start = Instant::now();
+
+    // Simple chain: Rust -> Go -> Python -> C
+    let go_result = client.call_service("go", &format!("/api/hello?from={}", text)).await;
+    let python_result = client.call_service("python", &format!("/api/hello?from={}", go_result.get("message").unwrap_or(&serde_json::Value::Null).as_str().unwrap_or(""))).await;
+
+    let elapsed = start.elapsed().as_millis() as u64;
+
+    Ok(Json(serde_json::json!({
+        "service": state.service_name,
+        "chain": [go_result, python_result],
+        "total_time_ms": elapsed
+    })))
+}
+
 #[tokio::main]
 async fn main() {
     let state = Arc::new(AppState {
@@ -152,6 +257,9 @@ async fn main() {
         .route("/api/hello", get(hello_handler))
         .route("/api/compute", get(compute_handler))
         .route("/api/echo", post(echo_handler))
+        // Inter-service communication endpoints
+        .route("/internal/aggregate", get(aggregate_handler))
+        .route("/internal/chain", post(chain_handler))
         .with_state(state);
 
     let port = std::env::var("PORT")
