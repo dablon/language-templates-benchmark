@@ -15,12 +15,14 @@ Quickly generate new projects with the **scaffold-cli** tool:
 cd scaffold-cli
 cargo build --release
 
-# Run with interactive prompts
-./target/release/scaffold-cli.exe
+# Run with interactive prompts (append .exe on Windows)
+./target/release/scaffold-cli
 
 # Or use CLI flags
-./target/release/scaffold-cli.exe -n myproject -l go -p grpc -d postgres
+./target/release/scaffold-cli -n myproject -l go -p grpc -d postgres
 ```
+
+Every push to `master` now triggers the `Build and release scaffold-cli` workflow, which validates the CLI, builds release archives for Linux, macOS (Intel and Apple Silicon), and Windows, and publishes a GitHub release tagged as `v0.0.<UTC timestamp>`.
 
 ### CLI Options
 
@@ -36,13 +38,13 @@ cargo build --release
 
 ```bash
 # HTTP only, no database (fastest startup)
-./scaffold-cli.exe -n my-api -l go -p http -d none
+./scaffold-cli -n my-api -l go -p http -d none
 
 # gRPC with PostgreSQL
-./scaffold-cli.exe -n my-service -l rust -p grpc -d postgres
+./scaffold-cli -n my-service -l rust -p grpc -d postgres
 
 # Full service mesh with PostgreSQL + Redis
-./scaffold-cli.exe -n my-mesh -l python -p service-mesh -d postgres-redis
+./scaffold-cli -n my-mesh -l python -p service-mesh -d postgres-redis
 ```
 
 ### Generated Project Features
@@ -189,7 +191,7 @@ Option 1: Use the **scaffold-cli** to generate a base project, then customize:
 
 ```bash
 # Generate a base template
-./scaffold-cli/target/release/scaffold-cli.exe -n my-template -l <language> -p http -d none
+./scaffold-cli/target/release/scaffold-cli -n my-template -l <language> -p http -d none
 
 # Then add your custom code and features
 ```
