@@ -1,9 +1,10 @@
 CC = gcc
-CFLAGS = -Wall -O2 -std=c11
+CFLAGS = -Wall -O2 -std=c11 -Iinclude
 LDFLAGS = -lmicrohttpd
 
 TARGET = server
-SRC = main.c
+SRC_DIR = src
+SRC = $(SRC_DIR)/main.c $(SRC_DIR)/config.c $(SRC_DIR)/handlers/routes.c
 
 all: $(TARGET)
 
@@ -16,4 +17,7 @@ clean:
 run: $(TARGET)
 	./$(TARGET)
 
-.PHONY: all clean run
+test:
+	@echo "Tests placeholder - run manually"
+
+.PHONY: all clean run test

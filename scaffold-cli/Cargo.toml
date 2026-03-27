@@ -1,5 +1,5 @@
 [package]
-name = "scaffold-cli"
+name = "genlang"
 version = "0.1.0"
 edition = "2021"
 description = "Scaffold web service projects in multiple languages with configurable options"

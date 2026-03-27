@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,14 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/consul/api"
-	_ "github.com/lib/pq"
 )
 
 var (
 	serviceName  = "{{PROJECT_NAME}}"
 	version      = "0.1.0"
 	startTime    = time.Now()
-	db           *sql.DB
 	consulClient *api.Client
 )
 

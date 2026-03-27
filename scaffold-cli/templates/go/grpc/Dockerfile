@@ -6,7 +6,7 @@ RUN apk add --no-cache git protobuf protoc
 WORKDIR /app
 
 # Install Go dependencies
-COPY go.mod go.sum ./
+COPY go.mod go.sum* ./
 RUN go mod download
 
 # Copy source

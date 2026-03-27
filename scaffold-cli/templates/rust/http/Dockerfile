@@ -17,8 +17,7 @@ COPY Cargo.toml Cargo.lock* ./
 
 # Create dummy source for dependency caching
 RUN mkdir -p src && \
-    echo "fn main() {}" > src/main.rs && \
-    echo "pub fn lib() {}" > src/lib.rs
+    echo "fn main() {}" > src/main.rs
 
 # Build dependencies (cached layer)
 RUN cargo build --release && \
@@ -29,8 +28,9 @@ COPY src/ ./src/
 COPY static/ ./static/
 
 # Build application
-RUN touch src/main.rs src/lib.rs && \
-    cargo build --release
+RUN touch src/main.rs && \
+    cargo build --release && \
+    mv target/release/{{PROJECT_NAME}} target/release/app
 
 # Stage 2: Production
 FROM debian:bookworm-slim
@@ -48,7 +48,7 @@ RUN groupadd --gid 1000 appgroup && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/rust-template /app/rust-template
+COPY --from=builder /app/target/release/app /app/app
 
 # Copy static files
 COPY --from=builder /app/static/ /app/static/
@@ -67,4 +67,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
 # Run the application
-CMD ["./rust-template"]
+CMD ["./app"]

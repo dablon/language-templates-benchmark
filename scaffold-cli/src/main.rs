@@ -366,15 +366,14 @@ fn generate_docker_compose(
     service_config = replace_placeholders(&service_config, project_name);
     services.push_str(&service_config);
 
-    // Networks and volumes - only include if needed
+    // Networks and volumes - only include volumes if needed
     let mut networks_volumes = String::new();
     networks_volumes.push_str("networks:\n  app-net:\n    driver: bridge\n\n");
 
     if matches!(database, Database::Postgres) || matches!(database, Database::PostgresRedis) {
         networks_volumes.push_str("volumes:\n  postgres_data:\n");
-    } else {
-        networks_volumes.push_str("volumes:\n");
     }
+    // Don't include empty volumes section
 
     let compose = format!(
         r#"version: '3.8'

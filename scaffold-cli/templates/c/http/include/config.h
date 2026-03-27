@@ -1,5 +1,5 @@
 /**
- * Configuration header for C template
+ * Configuration header
  */
 
 #ifndef CONFIG_H
@@ -7,26 +7,12 @@
 
 #include <stddef.h>
 
-// Configuration structure
-struct Config {
-    int port;
-    char *service_name;
-    char *version;
-    char *static_dir;
-    int max_connections;
-    int thread_pool_size;
-    int timeout_seconds;
-};
-
-// Create configuration
-struct Config* config_create(int port, const char *service_name, const char *version);
-
-// Destroy configuration
-void config_destroy(struct Config *config);
-
-// Default values
+// Service constants
+#define SERVICE_NAME "{{PROJECT_NAME}}"
+#define VERSION "0.1.0"
 #define DEFAULT_PORT 3004
-#define DEFAULT_THREAD_POOL_SIZE 4
-#define DEFAULT_TIMEOUT 30
+
+// Get port from environment
+int get_port(void);
 
 #endif // CONFIG_H
