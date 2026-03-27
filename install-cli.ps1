@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$CliDir = Join-Path $ScriptDir "scaffold-cli"
+$CliDir = Join-Path $ScriptDir "genlang-cli"
 
 Write-Host "🔨 Building genlang..." -ForegroundColor Cyan
 Set-Location $CliDir

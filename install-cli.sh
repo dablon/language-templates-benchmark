@@ -4,7 +4,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI_DIR="$SCRIPT_DIR/scaffold-cli"
+CLI_DIR="$SCRIPT_DIR/genlang-cli"
 
 echo "🔨 Building genlang..."
 cd "$CLI_DIR"

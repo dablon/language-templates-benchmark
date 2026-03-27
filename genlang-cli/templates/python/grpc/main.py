@@ -72,7 +72,7 @@ def serve():
     server.add_insecure_port(f"[::]:{port}")
     server.start()
     print(f"Starting {{PROJECT_NAME}} (gRPC) on port {port}")
-    server.wait_for_gracefultermination()
+    server.wait_for_termination()
 
 if __name__ == "__main__":
     serve()
