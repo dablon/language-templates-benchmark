@@ -392,7 +392,12 @@ services:
 }
 
 /// Generate .env.example file
-fn generate_env_file(project_dir: &Path, project_name: &str, database: &Database, language: &Language) -> std::io::Result<()> {
+fn generate_env_file(
+    project_dir: &Path,
+    project_name: &str,
+    database: &Database,
+    language: &Language,
+) -> std::io::Result<()> {
     let port = get_language_port(language);
 
     let mut content = format!(
@@ -436,23 +441,41 @@ fn scaffold_project(
     database: Database,
     output_dir: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n{}", "╔═══════════════════════════════════════════════════════════╗".cyan());
+    println!(
+        "\n{}",
+        "╔═══════════════════════════════════════════════════════════╗".cyan()
+    );
     println!("{}", "║          PROJECT SCAFFOLD CLI".cyan().bold());
-    println!("{}", "╚═══════════════════════════════════════════════════════════╝".cyan());
+    println!(
+        "{}",
+        "╚═══════════════════════════════════════════════════════════╝".cyan()
+    );
 
     println!("\n{}", "  📋 Configuration:".yellow());
     println!("      {} Project: {}", "•".green(), name.bold());
-    println!("      {} Language: {}", "•".green(), get_language_name(&language));
-    println!("      {} Protocol: {}", "•".green(), match &protocol {
-        Protocol::Http => "HTTP only",
-        Protocol::Grpc => "gRPC",
-        Protocol::ServiceMesh => "Service Mesh (HTTP + gRPC + Consul)",
-    });
-    println!("      {} Database: {}", "•".green(), match &database {
-        Database::None => "None",
-        Database::Postgres => "PostgreSQL",
-        Database::PostgresRedis => "PostgreSQL + Redis",
-    });
+    println!(
+        "      {} Language: {}",
+        "•".green(),
+        get_language_name(&language)
+    );
+    println!(
+        "      {} Protocol: {}",
+        "•".green(),
+        match &protocol {
+            Protocol::Http => "HTTP only",
+            Protocol::Grpc => "gRPC",
+            Protocol::ServiceMesh => "Service Mesh (HTTP + gRPC + Consul)",
+        }
+    );
+    println!(
+        "      {} Database: {}",
+        "•".green(),
+        match &database {
+            Database::None => "None",
+            Database::Postgres => "PostgreSQL",
+            Database::PostgresRedis => "PostgreSQL + Redis",
+        }
+    );
 
     // Determine output directory
     let target_dir = match output_dir {
@@ -460,7 +483,10 @@ fn scaffold_project(
         None => PathBuf::from(&name),
     };
 
-    println!("\n{}", format!("  📁 Output: {}", target_dir.display()).yellow());
+    println!(
+        "\n{}",
+        format!("  📁 Output: {}", target_dir.display()).yellow()
+    );
 
     // Check if directory exists
     if target_dir.exists() {
@@ -486,7 +512,10 @@ fn scaffold_project(
     println!("{}", "  📝 Generating .env.example...".yellow());
     generate_env_file(&target_dir, &name, &database, &language)?;
 
-    println!("\n{}", "  ✅ Project scaffolded successfully!".green().bold());
+    println!(
+        "\n{}",
+        "  ✅ Project scaffolded successfully!".green().bold()
+    );
     println!("\n{}", "  Next steps:".cyan());
     println!("      1. cd {}", name.bold());
     println!("      2. Review .env.example and create .env");
