@@ -3,145 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Language Templates Benchmark</title>
+    <title>Language Templates Benchmark - CLI Tool</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); min-height: 100vh; color: #eee; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
         header { text-align: center; margin-bottom: 60px; }
-        h1 { font-size: 3.5rem; background: linear-gradient(135deg, #e94560 0%, #00d9ff 50%, #00ff88 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 20px; font-weight: 800; }
-        .subtitle { font-size: 1.3rem; color: #888; max-width: 600px; margin: 0 auto; }
-        .badge-container { display: flex; justify-content: center; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
-        .badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; }
-        .badge a { color: #00d9ff; text-decoration: none; }
-        .benchmark-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; margin-bottom: 50px; }
-        .benchmark-section h2 { font-size: 2rem; margin-bottom: 30px; color: #fff; }
-        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .result-card { background: rgba(0,0,0,0.3); border-radius: 16px; padding: 30px; text-align: center; border: 1px solid rgba(255,255,255,0.05); transition: transform 0.3s; }
-        .result-card:hover { transform: translateY(-5px); }
-        .rank { font-size: 3rem; font-weight: 800; margin-bottom: 10px; }
-        .rank-1 { color: #ffd700; } .rank-2 { color: #c0c0c0; } .rank-3 { color: #cd7f32; } .rank-4 { color: #888; }
-        .lang-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
-        .lang-rust { color: #ff6b35; } .lang-c { color: #888; } .lang-go { color: #00add8; } .lang-python { color: #4caf50; }
-        .framework { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
-        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.1); }
-        .metric-label { color: #888; } .metric-value { font-weight: 700; } .req-sec { color: #00ff88; }
-        .templates-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
-        .template-card { background: rgba(0,0,0,0.3); border-radius: 16px; padding: 30px; border: 1px solid rgba(255,255,255,0.05); }
-        .template-card h3 { font-size: 1.3rem; margin-bottom: 10px; }
-        .template-card .port { display: inline-block; background: rgba(0,217,255,0.2); color: #00d9ff; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; margin-bottom: 15px; }
-        .template-card p { color: #888; font-size: 0.95rem; margin-bottom: 20px; }
-        .features { display: flex; flex-wrap: wrap; gap: 8px; }
-        .feature-tag { background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; }
-        .features-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; margin-top: 50px; }
-        .features-section h2 { font-size: 2rem; margin-bottom: 30px; color: #fff; }
-        .features-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .feature-item { display: flex; gap: 15px; align-items: flex-start; }
-        .feature-icon { font-size: 1.5rem; flex-shrink: 0; }
-        .feature-item h4 { font-size: 1.1rem; margin-bottom: 5px; }
-        .feature-item p { color: #888; font-size: 0.9rem; }
-        footer { text-align: center; margin-top: 60px; padding: 30px; color: #666; border-top: 1px solid rgba(255,255,255,0.1); }
+        h1 { font-size: 3rem; background: linear-gradient(135deg, #00d9ff 0%, #00ff88 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 15px; font-weight: 800; }
+        .subtitle { font-size: 1.2rem; color: #888; max-width: 600px; margin: 0 auto; }
+        .section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 35px; margin-bottom: 35px; }
+        h2 { font-size: 1.8rem; margin-bottom: 25px; color: #fff; border-bottom: 2px solid #00d9ff; padding-bottom: 10px; }
+        h3 { font-size: 1.3rem; margin: 25px 0 15px; color: #00ff88; }
+        p { color: #aaa; margin-bottom: 15px; }
+        code { background: #0d0d1a; padding: 3px 8px; border-radius: 6px; font-family: 'JetBrains Mono', 'Fira Code', monospace; color: #ff6b6b; font-size: 0.9em; }
+        pre { background: #0d0d1a; border-radius: 12px; padding: 20px; margin: 20px 0; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); }
+        pre code { background: none; padding: 0; color: #00d9ff; font-size: 0.9rem; line-height: 1.6; }
+        .cli-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .cli-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); }
+        .cli-card h4 { color: #00d9ff; margin-bottom: 10px; font-size: 1.1rem; }
+        .cli-card p { color: #888; font-size: 0.9rem; }
+        .template-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .template-card { background: rgba(0,217,255,0.1); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid rgba(0,217,255,0.3); }
+        .template-card .lang { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+        .template-card .ports { color: #888; font-size: 0.85rem; }
+        .example { background: linear-gradient(135deg, rgba(0,217,255,0.1) 0%, rgba(0,255,136,0.1) 100%); border-radius: 12px; padding: 25px; margin: 25px 0; border-left: 4px solid #00d9ff; }
+        .protocols { display: flex; gap: 15px; flex-wrap: wrap; margin: 15px 0; }
+        .protocol-badge { background: rgba(255,107,107,0.2); color: #ff6b6b; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; }
+        .database-badge { background: rgba(0,255,136,0.2); color: #00ff88; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; }
+        .downloads { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; }
+        .download-btn { background: linear-gradient(135deg, #00d9ff 0%, #00ff88 100%); color: #0f0f23; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; transition: transform 0.2s; }
+        .download-btn:hover { transform: translateY(-2px); }
+        footer { text-align: center; margin-top: 50px; padding: 30px; color: #666; border-top: 1px solid rgba(255,255,255,0.1); }
         footer a { color: #00d9ff; text-decoration: none; }
-        @media (max-width: 768px) { h1 { font-size: 2.5rem; } .container { padding: 20px; } }
+        .quick-start { border: 2px solid #00d9ff; background: linear-gradient(135deg, rgba(0,217,255,0.15) 0%, rgba(0,217,255,0.05) 100%); }
+        .quick-start h2 { border-bottom-color: #00ff88; color: #00ff88; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Language Templates Benchmark</h1>
-            <p class="subtitle">Comparative benchmark of web service templates across multiple programming languages. Same API, same endpoints, fair performance comparison.</p>
-            <div class="badge-container">
-                <span class="badge">🐹 Go 1.21</span>
-                <span class="badge">🐍 Python 3.12</span>
-                <span class="badge">🦀 Rust 1.85</span>
-                <span class="badge">⚙️ C + libmicrohttpd</span>
-                <span class="badge">📊 <a href="https://github.com/dablon/language-templates-benchmark" target="_blank">View on GitHub</a></span>
-            </div>
+            <h1>Project Scaffolding CLI</h1>
+            <p class="subtitle">Generate production-ready web service projects in Go, Python, Rust, and C with a single command</p>
         </header>
 
-        <section class="benchmark-section">
-            <h2>📊 Benchmark Results</h2>
-            <p style="color: #888; margin-bottom: 30px;">100 concurrent connections over 60 seconds. All services in Docker on the same machine.</p>
-            <div class="results-grid">
-                <div class="result-card">
-                    <div class="rank rank-1">🥇</div>
-                    <div class="lang-name lang-rust">Rust</div>
-                    <div class="framework">Axum 0.7</div>
-                    <div class="metric"><span class="metric-label">Requests/sec</span><span class="metric-value req-sec">4,287</span></div>
-                    <div class="metric"><span class="metric-label">Latency p50</span><span class="metric-value">6.8ms</span></div>
-                    <div class="metric"><span class="metric-label">Latency p99</span><span class="metric-value">40.7ms</span></div>
-                </div>
-                <div class="result-card">
-                    <div class="rank rank-2">🥈</div>
-                    <div class="lang-name lang-c">C</div>
-                    <div class="framework">libmicrohttpd</div>
-                    <div class="metric"><span class="metric-label">Requests/sec</span><span class="metric-value req-sec">3,054</span></div>
-                    <div class="metric"><span class="metric-label">Latency p50</span><span class="metric-value">12.9ms</span></div>
-                    <div class="metric"><span class="metric-label">Latency p99</span><span class="metric-value">50.2ms</span></div>
-                </div>
-                <div class="result-card">
-                    <div class="rank rank-3">🥉</div>
-                    <div class="lang-name lang-go">Go</div>
-                    <div class="framework">Gin 1.9</div>
-                    <div class="metric"><span class="metric-label">Requests/sec</span><span class="metric-value req-sec">2,155</span></div>
-                    <div class="metric"><span class="metric-label">Latency p50</span><span class="metric-value">38.8ms</span></div>
-                    <div class="metric"><span class="metric-label">Latency p99</span><span class="metric-value">75.2ms</span></div>
-                </div>
-                <div class="result-card">
-                    <div class="rank rank-4">4️⃣</div>
-                    <div class="lang-name lang-python">Python</div>
-                    <div class="framework">FastAPI</div>
-                    <div class="metric"><span class="metric-label">Requests/sec</span><span class="metric-value req-sec">1,615</span></div>
-                    <div class="metric"><span class="metric-label">Latency p50</span><span class="metric-value">34.5ms</span></div>
-                    <div class="metric"><span class="metric-label">Latency p99</span><span class="metric-value">96.6ms</span></div>
-                </div>
-            </div>
-        </section>
+        <div class="section quick-start">
+            <h2>🚀 Quick Start</h2>
+            <pre><code># Download the CLI for your platform
+curl -L https://github.com/dablon/language-templates-benchmark/releases/latest | grep -o 'scaffold-cli-.*'</code></pre>
+            <p>Or build from source:</p>
+            <pre><code>git clone https://github.com/dablon/language-templates-benchmark.git
+cd language-templates-benchmark/scaffold-cli
+cargo build --release
+./target/release/scaffold</code></pre>
+        </div>
 
-        <section class="benchmark-section">
-            <h2>📦 Templates</h2>
-            <div class="templates-grid">
-                <div class="template-card">
-                    <h3 class="lang-rust">🦀 Rust</h3>
-                    <span class="port">Port 3001</span>
-                    <p>High-performance web framework built with safety and speed in mind.</p>
-                    <div class="features"><span class="feature-tag">Axum</span><span class="feature-tag">Tokio</span><span class="feature-tag">Tower</span></div>
-                </div>
-                <div class="template-card">
-                    <h3 class="lang-c">⚙️ C</h3>
-                    <span class="port">Port 3004</span>
-                    <p>Low-level web server with minimal dependencies and memory footprint.</p>
-                    <div class="features"><span class="feature-tag">libmicrohttpd</span><span class="feature-tag">Minimal</span></div>
-                </div>
-                <div class="template-card">
-                    <h3 class="lang-go">🐹 Go</h3>
-                    <span class="port">Port 3002</span>
-                    <p>Expressive HTTP router with middleware support and fast compilation.</p>
-                    <div class="features"><span class="feature-tag">Gin</span><span class="feature-tag">net/http</span></div>
-                </div>
-                <div class="template-card">
-                    <h3 class="lang-python">🐍 Python</h3>
-                    <span class="port">Port 3003</span>
-                    <p>Modern async web framework with automatic OpenAPI documentation.</p>
-                    <div class="features"><span class="feature-tag">FastAPI</span><span class="feature-tag">Uvicorn</span></div>
-                </div>
-            </div>
-        </section>
+        <div class="section">
+            <h2>📋 CLI Usage</h2>
+            <pre><code>scaffold [OPTIONS]
 
-        <section class="features-section">
-            <h2>✨ Features</h2>
-            <div class="features-list">
-                <div class="feature-item"><span class="feature-icon">🔄</span><div><h4>Same API Surface</h4><p>All templates implement identical endpoints for fair comparison.</p></div></div>
-                <div class="feature-item"><span class="feature-icon">🐳</span><div><h4>Docker Ready</h4><p>Multi-stage builds with minimal production images.</p></div></div>
-                <div class="feature-item"><span class="feature-icon">🛡️</span><div><h4>Non-Root User</h4><p>Security best practices with non-root Docker users.</p></div></div>
-                <div class="feature-item"><span class="feature-icon">📁</span><div><h4>Professional Structure</h4><p>Clean separation: routes, models, config, error handling.</p></div></div>
-                <div class="feature-item"><span class="feature-icon">📝</span><div><h4>Health Checks</h4><p>Built-in /health endpoint for container orchestration.</p></div></div>
-                <div class="feature-item"><span class="feature-icon">📊</span><div><h4>Benchmark Suite</h4><p>Automated performance testing with hey/bombardier.</p></div></div>
+Options:
+  -n, --name &lt;NAME&gt;          Project name (required)
+  -l, --language &lt;LANG&gt;      go, python, rust, c [required]
+  -p, --protocol &lt;PROTO&gt;     http, grpc, service-mesh [required]
+  -d, --database &lt;DB&gt;        none, postgres, postgres-redis [default: none]
+  -o, --output &lt;DIR&gt;         Output directory [default: .]
+  -h, --help                  Show help</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>💡 Examples</h2>
+            
+            <h3>Create a Go HTTP API</h3>
+            <pre><code>scaffold -n my-api -l go -p http -d none -o ./projects</code></pre>
+            <div class="protocols">
+                <span class="protocol-badge">HTTP</span>
+                <span class="database-badge">No DB</span>
             </div>
-        </section>
+
+            <h3>Create a Rust gRPC service with PostgreSQL</h3>
+            <pre><code>scaffold -n my-grpc -l rust -p grpc -d postgres -o ./projects</code></pre>
+            <div class="protocols">
+                <span class="protocol-badge">gRPC</span>
+                <span class="database-badge">PostgreSQL</span>
+            </div>
+
+            <h3>Create a Python Service Mesh project</h3>
+            <pre><code>scaffold -n my-mesh -l python -p service-mesh -d postgres-redis -o ./projects</code></pre>
+            <div class="protocols">
+                <span class="protocol-badge">Service Mesh</span>
+                <span class="protocol-badge">Consul</span>
+                <span class="database-badge">PostgreSQL + Redis</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 Supported Languages</h2>
+            <div class="template-grid">
+                <div class="template-card">
+                    <div class="lang" style="color:#00add8;">Go</div>
+                    <div class="ports">Port: 3002 • Gin Framework</div>
+                </div>
+                <div class="template-card">
+                    <div class="lang" style="color:#4caf50;">Python</div>
+                    <div class="ports">Port: 3003 • FastAPI</div>
+                </div>
+                <div class="template-card">
+                    <div class="lang" style="color:#ff6b35;">Rust</div>
+                    <div class="ports">Port: 3001 • Axum</div>
+                </div>
+                <div class="template-card">
+                    <div class="lang" style="color:#888;">C</div>
+                    <div class="ports">Port: 3004 • libmicrohttpd</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 Protocols</h2>
+            <div class="cli-grid">
+                <div class="cli-card">
+                    <h4>HTTP</h4>
+                    <p>Pure REST API with JSON. No gRPC or service mesh dependencies. Fastest for simple microservices.</p>
+                </div>
+                <div class="cli-card">
+                    <h4>gRPC</h4>
+                    <p>High-performance RPC using Protocol Buffers. Ideal for internal service communication.</p>
+                </div>
+                <div class="cli-card">
+                    <h4>Service Mesh</h4>
+                    <p>HTTP + Consul service discovery. Full mesh integration with health checking.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🗄️ Database Options</h2>
+            <div class="cli-grid">
+                <div class="cli-card">
+                    <h4>None</h4>
+                    <p>No database. Pure compute/microservice without persistence.</p>
+                </div>
+                <div class="cli-card">
+                    <h4>PostgreSQL</h4>
+                    <p>Single database connection with connection pooling.</p>
+                </div>
+                <div class="cli-card">
+                    <h4>PostgreSQL + Redis</h4>
+                    <p>Full stack with cache layer for high-performance apps.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📁 Generated Project Structure</h2>
+            <pre><code>my-project/
+├── src/                  # Language-specific source
+│   └── main.{rs,go,py,c}  # Entry point
+├── static/              # Static files (HTML, CSS, JS)
+├── Dockerfile            # Multi-stage container build
+├── docker-compose.yml    # Full stack with optional DB
+├── .env.example         # Environment template
+└── README.md            # Project docs
+
+# API Endpoints (all templates)
+GET  /           → Home page
+GET  /health     → Health check
+GET  /api/hello  → JSON greeting
+GET  /api/compute → CPU benchmark
+POST /api/echo    → Echo body</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>🐳 Docker Support</h2>
+            <p>Every generated project includes Docker support:</p>
+            <pre><code># Build and run
+docker compose up --build
+
+# Run specific service
+docker compose up -d go-http
+
+# Scale services
+docker compose up --scale go-http=3</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>⬇️ Downloads</h2>
+            <p>Get pre-built binaries for your platform:</p>
+            <div class="downloads">
+                <a href="https://github.com/dablon/language-templates-benchmark/releases/latest/download/scaffold-cli-x86_64-unknown-linux-gnu.tar.gz" class="download-btn">Linux x64</a>
+                <a href="https://github.com/dablon/language-templates-benchmark/releases/latest/download/scaffold-cli-x86_64-apple-darwin.tar.gz" class="download-btn">macOS Intel</a>
+                <a href="https://github.com/dablon/language-templates-benchmark/releases/latest/download/scaffold-cli-aarch64-apple-darwin.tar.gz" class="download-btn">macOS ARM</a>
+                <a href="https://github.com/dablon/language-templates-benchmark/releases/latest/download/scaffold-cli-x86_64-pc-windows-msvc.zip" class="download-btn">Windows</a>
+            </div>
+        </div>
 
         <footer>
-            <p>Built with ❤️ by <a href="https://github.com/dablon" target="_blank">@dablon</a> • <a href="https://github.com/dablon/language-templates-benchmark" target="_blank">View on GitHub</a></p>
+            <p>Open Source • MIT License</p>
+            <p><a href="https://github.com/dablon/language-templates-benchmark">GitHub Repository</a></p>
         </footer>
     </div>
 </body>
