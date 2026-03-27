@@ -33,7 +33,8 @@ static int handle_chain(struct MHD_Connection *connection);
 static int handle_grpc_health(struct MHD_Connection *connection);
 static int handle_grpc_hello(struct MHD_Connection *connection, const char *data, size_t data_size);
 static int handle_grpc_aggregate(struct MHD_Connection *connection, const char *data, size_t data_size);
-// Database handlers
+
+// Database handlers (stub implementations)
 static int handle_db_records(struct MHD_Connection *connection);
 static int handle_db_record(struct MHD_Connection *connection, const char *url);
 
@@ -609,6 +610,28 @@ static int handle_grpc_aggregate(struct MHD_Connection *connection,
         strlen(json), (void *)json, MHD_RESPMEM_PERSISTENT);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
+// Database stub implementations (used when database is disabled)
+static int handle_db_records(struct MHD_Connection *connection) {
+    const char *json = "{\"error\":\"database not enabled\"}";
+    struct MHD_Response *response = MHD_create_response_from_buffer(
+        strlen(json), (void *)json, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, "Content-Type", "application/json");
+    int ret = MHD_queue_response(connection, MHD_HTTP_FORBIDDEN, response);
+    MHD_destroy_response(response);
+    return ret;
+}
+
+static int handle_db_record(struct MHD_Connection *connection, const char *url) {
+    const char *json = "{\"error\":\"database not enabled\"}";
+    (void)url;
+    struct MHD_Response *response = MHD_create_response_from_buffer(
+        strlen(json), (void *)json, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, "Content-Type", "application/json");
+    int ret = MHD_queue_response(connection, MHD_HTTP_FORBIDDEN, response);
     MHD_destroy_response(response);
     return ret;
 }

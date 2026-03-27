@@ -256,6 +256,10 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
 
+	// Static files
+	r.StaticFile("/", "./static/index.html")
+	r.Static("/static", "./static")
+
 	initMesh()
 	defer deregisterService()
 

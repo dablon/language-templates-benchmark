@@ -24,7 +24,7 @@ vendor/
 *.log
 logs/
 tmp/
-
+final-test
 # ===== IDE =====
 .vscode/
 .idea/

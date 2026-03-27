@@ -10,6 +10,7 @@ use std::time::Instant;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use std::env;
+use tower_http::services::ServeDir;
 
 struct AppState {
     service_name: String,
@@ -148,6 +149,7 @@ async fn main() {
     });
 
     let app = Router::new()
+        .nest_service("/static", ServeDir::new("static"))
         .route("/", get(index))
         .route("/health", get(health))
         .route("/api/hello", get(hello))

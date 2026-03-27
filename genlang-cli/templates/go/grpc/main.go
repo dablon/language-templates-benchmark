@@ -12,6 +12,50 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// Proto message types (manually defined instead of generated)
+type HealthRequest struct{}
+type HealthResponse struct {
+	Service   string `json:"service"`
+	Status    string `json:"status"`
+	Version   string `json:"version"`
+	UptimeNs  int64  `json:"uptime_ns"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+type HelloRequest struct{}
+type HelloResponse struct {
+	Service   string `json:"service"`
+	Message   string `json:"message"`
+	Version   string `json:"version"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+type ComputeRequest struct{ N int64 }
+type ComputeResponse struct {
+	Operation       string `json:"operation"`
+	FibonacciInput  int64  `json:"fibonacci_input"`
+	FibonacciValue  int64  `json:"fibonacci_value"`
+	PrimesCount     int64  `json:"primes_count"`
+	ExecutionTimeNs int64  `json:"execution_time_ns"`
+	Service         string `json:"service"`
+}
+
+type EchoRequest struct{ Body string }
+type EchoResponse struct {
+	OriginalLength int64  `json:"original_length"`
+	Uppercase      string `json:"uppercase"`
+	Lowercase      string `json:"lowercase"`
+	Service        string `json:"service"`
+}
+
+// Server interface (simplified - not using generated protobuf)
+type BenchmarkServer interface {
+	Health(context.Context, *HealthRequest) (*HealthResponse, error)
+	Hello(context.Context, *HelloRequest) (*HelloResponse, error)
+	Compute(context.Context, *ComputeRequest) (*ComputeResponse, error)
+	Echo(context.Context, *EchoRequest) (*EchoResponse, error)
+}
+
 var (
 	serviceName = "{{PROJECT_NAME}}"
 	version     = "0.1.0"
@@ -23,11 +67,11 @@ var (
 // ============================================
 
 type BenchmarkService struct {
-	UnimplementedBenchmarkServer
+	pb.UnimplementedBenchmarkServer
 }
 
-func (s *BenchmarkService) Health(ctx context.Context, req *HealthRequest) (*HealthResponse, error) {
-	return &HealthResponse{
+func (s *BenchmarkService) Health(ctx context.Context, req *pb.HealthRequest) (*pb.HealthResponse, error) {
+	return &pb.HealthResponse{
 		Service:    serviceName,
 		Status:     "healthy",
 		Version:     version,
@@ -36,8 +80,8 @@ func (s *BenchmarkService) Health(ctx context.Context, req *HealthRequest) (*Hea
 	}, nil
 }
 
-func (s *BenchmarkService) Hello(ctx context.Context, req *HelloRequest) (*HelloResponse, error) {
-	return &HelloResponse{
+func (s *BenchmarkService) Hello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloResponse, error) {
+	return &pb.HelloResponse{
 		Service:  serviceName,
 		Message:  fmt.Sprintf("Hello from %s (gRPC)!", serviceName),
 		Version:  version,
@@ -45,7 +89,7 @@ func (s *BenchmarkService) Hello(ctx context.Context, req *HelloRequest) (*Hello
 	}, nil
 }
 
-func (s *BenchmarkService) Compute(ctx context.Context, req *ComputeRequest) (*ComputeResponse, error) {
+func (s *BenchmarkService) Compute(ctx context.Context, req *pb.ComputeRequest) (*pb.ComputeResponse, error) {
 	n := int(req.N)
 	if n > 35 {
 		n = 35
@@ -67,7 +111,7 @@ func (s *BenchmarkService) Compute(ctx context.Context, req *ComputeRequest) (*C
 	}
 	elapsed := time.Since(start)
 
-	return &ComputeResponse{
+	return &pb.ComputeResponse{
 		Operation:      "compute",
 		FibonacciInput: int64(n),
 		FibonacciValue: int64(fib),
@@ -77,9 +121,9 @@ func (s *BenchmarkService) Compute(ctx context.Context, req *ComputeRequest) (*C
 	}, nil
 }
 
-func (s *BenchmarkService) Echo(ctx context.Context, req *EchoRequest) (*EchoResponse, error) {
+func (s *BenchmarkService) Echo(ctx context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
 	body := req.Body
-	return &EchoResponse{
+	return &pb.EchoResponse{
 		OriginalLength: int64(len(body)),
 		Uppercase:      string([]byte(body)),
 		Lowercase:      string([]byte(body)),

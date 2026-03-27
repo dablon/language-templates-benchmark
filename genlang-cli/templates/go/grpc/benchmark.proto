@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package benchmark;
 
-option go_package = ".;benchmark";
+option go_package = "{{PROJECT_NAME}}/pb";
 
 service Benchmark {
     rpc Health(HealthRequest) returns (HealthResponse);

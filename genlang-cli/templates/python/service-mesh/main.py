@@ -2,8 +2,10 @@ import os
 import time
 import asyncio
 from typing import Dict, List, Any, Optional
+from pathlib import Path
 from fastapi import FastAPI, Request, Response, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import httpx
 
@@ -15,6 +17,11 @@ except ImportError:
     CONSUL_AVAILABLE = False
 
 app = FastAPI()
+
+# Mount static files
+static_path = Path(__file__).parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 SERVICE_NAME = "{{PROJECT_NAME}}"
 VERSION = "0.1.0"
@@ -77,6 +84,10 @@ async def health():
 
 @app.get("/")
 async def index():
+    static_path = Path(__file__).parent / "static" / "index.html"
+    if static_path.exists():
+        return FileResponse(str(static_path))
+
     mesh_info = "disabled" if not consul_client else f"Consul @ {CONSUL_ADDR}"
     html = f"""
     <!DOCTYPE html>

@@ -9,6 +9,6 @@ RUN make clean && make
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates libmicrohttpd curl libcurl json-c
 WORKDIR /app
-COPY --from=builder /app/c-template .
+COPY --from=builder /app/{{PROJECT_NAME}} .
 EXPOSE 3004
-CMD ["./c-template"]
+CMD ["./{{PROJECT_NAME}}"]

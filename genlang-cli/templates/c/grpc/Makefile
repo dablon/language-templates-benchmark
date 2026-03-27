@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -O2 -pthread
 LDFLAGS = -lmicrohttpd -lcurl -ljson-c -pthread
 
-TARGET = c-template
+TARGET = {{PROJECT_NAME}}
 SRC = main.c
 OBJ = $(SRC:.c=.o)
 
