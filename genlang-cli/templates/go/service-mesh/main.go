@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -34,15 +32,21 @@ type ServiceMeshConfig struct {
 var meshConfig ServiceMeshConfig
 
 func initMesh() {
-	enableConsul := os.Getenv("ENABLE_CONSUL", "false")
+	enableConsul := os.Getenv("ENABLE_CONSUL")
 	if enableConsul != "true" {
 		log.Println("ENABLE_CONSUL=false, running without service mesh")
 		meshConfig = ServiceMeshConfig{Enabled: false}
 		return
 	}
 
-	consulAddr := os.Getenv("CONSUL_ADDR", "localhost:8500")
-	serviceID := os.Getenv("SERVICE_NAME", serviceName)
+	consulAddr := os.Getenv("CONSUL_ADDR")
+	if consulAddr == "" {
+		consulAddr = "localhost:8500"
+	}
+	serviceID := os.Getenv("SERVICE_NAME")
+	if serviceID == "" {
+		serviceID = serviceName
+	}
 
 	cfg := api.DefaultConfig()
 	cfg.Address = consulAddr
@@ -79,7 +83,7 @@ func registerService() {
 		Check: &api.AgentServiceCheck{
 			HTTP:     fmt.Sprintf("http://localhost:%s/health", port),
 			Interval: "10s",
-			Done:     "30s",
+			Timeout:  "30s",
 		},
 	}
 
